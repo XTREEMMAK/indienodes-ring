@@ -86,8 +86,13 @@ jobs:
           node-version: 24
           cache: npm
 
+      # --ignore-scripts: this checks out `main` (trusted, protected), not PR
+      # content, so this job doesn't carry build-ring.yml's same-repo-branch
+      # exposure. Skipped anyway for consistency and because nothing here
+      # needs a lifecycle script -- this repo's own `prepare` only installs
+      # git hooks, of no use to an ephemeral runner.
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Remove member and validate generated ring
         env:

@@ -55,7 +55,16 @@ jobs:
           node-version: 24
           cache: npm
 
-      - run: npm ci
+      # --ignore-scripts: this checkout is a same-repository PR branch, whose
+      # content this job does not otherwise restrict beyond the members/**.json
+      # path that triggered it. A branch (or the automation that creates one)
+      # able to modify package.json, a dependency, or this repo's own
+      # `prepare` script could otherwise have that lifecycle code run here,
+      # in a job whose checkout still holds RING_BUILD_PAT for the later
+      # `git push`. Skipping lifecycle scripts removes that path without
+      # changing what this job actually needs from `npm ci` -- none of
+      # ajv/ajv-formats/prettier require a postinstall step.
+      - run: npm ci --ignore-scripts
       # n8n cannot load this repository's Prettier dependency. Formatting here
       # is a second line of defence for same-repo automation branches, while
       # the workflow generator still emits canonical JSON up front.
