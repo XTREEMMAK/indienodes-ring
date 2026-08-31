@@ -24,6 +24,7 @@ scripts/
   member-health.js       link-health probing
   check-member-links.js  CLI wrapper around member-health.js
 ring.json              generated artifact — do not hand-edit
+site/                  static landing page for ring.indienodes.us
 ```
 
 `ring.json` is a versioned envelope, not a bare array:

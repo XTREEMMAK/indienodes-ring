@@ -12,8 +12,9 @@
 # written, not assumed from docs) -- so the widget's cross-origin fetch works
 # with no CORS configuration here.
 #
-# Only ring.json and schema/ are published, not the whole repo: members/,
-# scripts/, and docs/ are source and tooling, not the public artifact.
+# Only the static landing page, ring.json, and schema/ are published, not the
+# whole repo: members/, scripts/, and docs/ are source and tooling, not the
+# public artifact.
 #
 # Path-filtered like build-ring.yml and validate-ring.yml: a docs-only or
 # script-only push has nothing new to publish.
@@ -27,6 +28,8 @@ on:
     paths:
       - 'ring.json'
       - 'schema/**'
+      - 'site/**'
+      - '.github/workflows/publish-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -45,41 +48,23 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Assemble the published site
         run: |
           mkdir -p _site/schema
+          cp -R site/. _site/
           cp ring.json _site/ring.json
           cp schema/ring.schema.json _site/schema/ring-entry.json
           cp schema/ring-document.schema.json _site/schema/ring-document.json
-          cat > _site/index.html <<'HTML'
-          <!doctype html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8" />
-            <title>indienodes-ring</title>
-          </head>
-          <body>
-            <h1>indienodes-ring</h1>
-            <p>The canonical <a href="https://github.com/XTREEMMAK/indienodes-ring">IndieNodes ring</a>.</p>
-            <ul>
-              <li><a href="/ring.json">ring.json</a></li>
-              <li><a href="/schema/ring-entry.json">schema/ring-entry.json</a></li>
-              <li><a href="/schema/ring-document.json">schema/ring-document.json</a></li>
-            </ul>
-          </body>
-          </html>
-          HTML
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: _site
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
 
       # Tells indienodes-app to refresh its own committed ring.json mirror
       # now, rather than waiting for that repo's own twice-daily fallback
