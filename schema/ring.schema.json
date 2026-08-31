@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "https://indienodes.us/schema/ring-entry.json",
+	"$id": "https://ring.indienodes.us/schema/ring-entry.json",
 	"title": "Ring entry",
 	"description": "A single entry in ring.json. See docs/submission-form-spec.md section 2.1 for the field-by-field notes.",
 	"type": "object",

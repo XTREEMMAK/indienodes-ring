@@ -1,0 +1,82 @@
+# Publishes ring.json and both schemas to GitHub Pages, at ring.indienodes.us.
+#
+# This is the canonical public endpoint -- the whole reason this repo exists
+# separately from indienodes-app. Deploying here is deliberately decoupled
+# from that app's own Docker image build: docker-publish.yml there triggers
+# on every push to main with no path filter, so today a member joining still
+# rebuilds and republishes the entire web app. Nothing in this workflow talks
+# to that pipeline at all, which is the point.
+#
+# GitHub Pages serves `access-control-allow-origin: *` on every response
+# unconditionally (verified live against a real Pages site before this was
+# written, not assumed from docs) -- so the widget's cross-origin fetch works
+# with no CORS configuration here.
+#
+# Only ring.json and schema/ are published, not the whole repo: members/,
+# scripts/, and docs/ are source and tooling, not the public artifact.
+#
+# Path-filtered like build-ring.yml and validate-ring.yml: a docs-only or
+# script-only push has nothing new to publish.
+
+name: Publish to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ring.json'
+      - 'schema/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the published site
+        run: |
+          mkdir -p _site/schema
+          cp ring.json _site/ring.json
+          cp schema/ring.schema.json _site/schema/ring-entry.json
+          cp schema/ring-document.schema.json _site/schema/ring-document.json
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <title>indienodes-ring</title>
+          </head>
+          <body>
+            <h1>indienodes-ring</h1>
+            <p>The canonical <a href="https://github.com/XTREEMMAK/indienodes-ring">IndieNodes ring</a>.</p>
+            <ul>
+              <li><a href="/ring.json">ring.json</a></li>
+              <li><a href="/schema/ring-entry.json">schema/ring-entry.json</a></li>
+              <li><a href="/schema/ring-document.json">schema/ring-document.json</a></li>
+            </ul>
+          </body>
+          </html>
+          HTML
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
