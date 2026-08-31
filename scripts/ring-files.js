@@ -63,10 +63,7 @@ export const RING_VERSION = '1.0';
  * fail that check against itself. A timestamp belongs on a *published*
  * endpoint, stamped at publish time, not in the committed artifact.
  *
- * Typed because `src/lib/publishedRing.test.js` imports this module, which
- * pulls the file into svelte-check's graph — nothing under src/ referenced it
- * before, so the parameter had gone unchecked rather than been decided against.
- * @param {import('../src/lib/ring.js').RingEntry[]} entries
+ * @param {Record<string, unknown>[]} entries
  */
 export function serializeRing(entries) {
 	return format(JSON.stringify({ version: RING_VERSION, entries }), {

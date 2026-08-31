@@ -146,8 +146,25 @@ export function isPublicIpAddress(address) {
 	return false;
 }
 
-/** @param {string | URL} input @param {LookupAll} [lookupImpl] @returns {Promise<URL>} */
-export async function validateExternalUrl(input, lookupImpl = lookup) {
+/**
+ * The safety checks decidable from a URL string alone, with no DNS lookup.
+ *
+ * Split out of `validateExternalUrl` below so `validate-ring.js`'s publish
+ * gate can reuse exactly this rule rather than a second, hand-copied version
+ * of the private-IP-range table -- two implementations of one rule is
+ * exactly the kind of drift this project has already been bitten by once
+ * (see docs/decisions.md's account of `src/lib/slug.js` and
+ * `build_workflows.py` independently implementing the same id rule and
+ * diverging). A publish-time gate has no business making a network call per
+ * URL anyway, and the thing it needs to catch -- a URL naming a private IP or
+ * embedding credentials -- is visible in the string itself.
+ * @param {string | URL} input
+ * @returns {{ url: URL, hostname: string }} `hostname` is fully normalized
+ *   (unbracketed, no trailing dot), for a caller that wants to skip a DNS
+ *   lookup on it: `isIP(hostname)` answers that only correctly using this
+ *   value, not `url.hostname`, which keeps IPv6 literals bracketed.
+ */
+export function assertStaticallySafeUrl(input) {
 	let url;
 	try {
 		url = input instanceof URL ? new URL(input.href) : new URL(input);
@@ -176,12 +193,16 @@ export async function validateExternalUrl(input, lookupImpl = lookup) {
 	) {
 		throw new LinkHealthError('unsafe_url', 'Local and internal hostnames are not checked.');
 	}
-	if (isIP(hostname)) {
-		if (!isPublicIpAddress(hostname)) {
-			throw new LinkHealthError('unsafe_url', 'Private and reserved IP addresses are not checked.');
-		}
-		return url;
+	if (isIP(hostname) && !isPublicIpAddress(hostname)) {
+		throw new LinkHealthError('unsafe_url', 'Private and reserved IP addresses are not checked.');
 	}
+	return { url, hostname };
+}
+
+/** @param {string | URL} input @param {LookupAll} [lookupImpl] @returns {Promise<URL>} */
+export async function validateExternalUrl(input, lookupImpl = lookup) {
+	const { url, hostname } = assertStaticallySafeUrl(input);
+	if (isIP(hostname)) return url; // A literal IP: already checked above, nothing left to resolve.
 
 	let addresses;
 	try {

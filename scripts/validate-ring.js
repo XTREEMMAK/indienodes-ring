@@ -24,6 +24,50 @@ import { readFileSync } from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { loadMembers, RING_PATH, ROOT, serializeRing } from './ring-files.js';
+import { assertStaticallySafeUrl } from './member-health.js';
+
+/**
+ * Every URL an entry carries, tagged with where it came from for a useful
+ * error message. Schema `pattern`s already require `https://`; this exists
+ * for what a regex pattern cannot cleanly express -- a private/reserved IP
+ * literal, a `localhost`-shaped hostname, embedded credentials -- without
+ * hand-copying the private-IP-range table Ajv can't see into a schema
+ * pattern too. See `assertStaticallySafeUrl` in `member-health.js`, which
+ * this reuses rather than duplicates.
+ * @param {Record<string, unknown>} entry
+ * @returns {{ field: string, url: string }[]}
+ */
+function urlsIn(entry) {
+	/** @type {{ field: string, url: string }[]} */
+	const found = [];
+	for (const field of ['source_url', 'thumb_url', 'preview_url']) {
+		if (typeof entry?.[field] === 'string') found.push({ field, url: entry[field] });
+	}
+	for (const [i, track] of (entry?.tracks ?? []).entries()) {
+		if (typeof track?.media_url === 'string') {
+			found.push({ field: `tracks[${i}].media_url`, url: track.media_url });
+		}
+	}
+	for (const [i, page] of (entry?.pages ?? []).entries()) {
+		if (typeof page?.image_url === 'string') {
+			found.push({ field: `pages[${i}].image_url`, url: page.image_url });
+		}
+	}
+	for (const [i, artwork] of (entry?.artworks ?? []).entries()) {
+		if (typeof artwork?.image_url === 'string') {
+			found.push({ field: `artworks[${i}].image_url`, url: artwork.image_url });
+		}
+		if (typeof artwork?.external_url === 'string') {
+			found.push({ field: `artworks[${i}].external_url`, url: artwork.external_url });
+		}
+	}
+	for (const [i, excerpt] of (entry?.excerpts ?? []).entries()) {
+		if (typeof excerpt?.audio_url === 'string') {
+			found.push({ field: `excerpts[${i}].audio_url`, url: excerpt.audio_url });
+		}
+	}
+	return found;
+}
 
 const entrySchema = JSON.parse(
 	readFileSync(new URL('../schema/ring.schema.json', import.meta.url))
@@ -78,6 +122,19 @@ for (const { file, expectedId, entry } of members) {
 	if (entry?.id !== expectedId) {
 		failures++;
 		console.error(`Entry ${label}: id must match its filename (${expectedId}).`);
+	}
+
+	// Not gated on --publish: unlike a placeholder, which is a legitimate
+	// interim state, a URL naming a private IP, a localhost-shaped hostname,
+	// or embedded credentials has no legitimate reason to be in real ring
+	// data at all, so both modes reject it.
+	for (const { field, url } of urlsIn(entry)) {
+		try {
+			assertStaticallySafeUrl(url);
+		} catch (error) {
+			failures++;
+			console.error(`Entry ${label}: ${field} is unsafe: ${error.message}`);
+		}
 	}
 
 	if (entry?.id) {
