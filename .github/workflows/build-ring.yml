@@ -15,15 +15,23 @@
 #
 # Checkout uses RING_BUILD_PAT, not the default GITHUB_TOKEN, deliberately:
 # GitHub does not trigger new workflow runs from a push authenticated with
-# the auto-issued GITHUB_TOKEN (anti-recursion protection), which meant
-# validate-ring.yml and docker-publish.yml silently never re-ran against the
-# commit this workflow makes - confirmed live, the resulting check runs
-# existed but had zero jobs. A real PAT push doesn't have that restriction.
-# RING_BUILD_PAT is the same fine-grained, this-repo-only, Contents:R&W PAT
-# already used as an n8n credential - same token, added a second time here
-# as a GitHub Actions repo secret (Settings > Secrets and variables >
-# Actions), since n8n's credential store and GitHub Actions secrets are two
-# separate systems with no way to share one value between them.
+# the auto-issued GITHUB_TOKEN (anti-recursion protection), which would mean
+# validate-ring.yml and ci.yml silently never re-ran against the commit this
+# workflow makes -- the resulting check runs would exist but have zero jobs.
+# This exact failure mode was confirmed live in indienodes-app before this
+# repo existed, against its own validate-ring.yml and docker-publish.yml; the
+# mechanism is GitHub's, not this repo's history, so it applies here
+# identically. A real PAT push doesn't have that restriction.
+#
+# RING_BUILD_PAT here is a fine-grained, this-repo-only, Contents + Pull
+# requests: Read & write PAT, added as a GitHub Actions repo secret (Settings
+# > Secrets and variables > Actions). It is also meant to become the
+# credential n8n's submission pipeline uses once that pipeline is re-scoped
+# to open pull requests against this repo instead of indienodes-app -- not
+# yet done, see that repo's migration plan -- at which point it gets added a
+# second time to n8n's own credential store, since GitHub Actions secrets and
+# n8n's credential store are two separate systems with no way to share one
+# value between them.
 
 name: Auto-build ring.json
 

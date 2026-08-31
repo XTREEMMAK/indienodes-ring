@@ -39,9 +39,10 @@ sometimes right and is never the same thing.
 Nothing rebuilds `ring.json` for a direct push — `build-ring.yml` is `pull_request`-only
 — so **you must run `npm run ring:build` yourself and commit the result in the same
 commit**. What does cover you is `ci.yml`, which runs `validate:publish` on every push to
-`main`, and which `docker-publish.yml` gates its build on. So a mismatch between
-`members/` and `ring.json` fails CI and no image is published: the bad state can reach the
-repository, but it cannot reach production.
+`main`. A mismatch between `members/` and `ring.json` therefore fails CI on `main` itself,
+not just on the pull request that introduced it — visible in this repository's own Actions
+tab, and blocking a merge in any downstream repository (`indienodes-app`, once its cutover
+to consuming this repo is complete) whose branch protection requires this check to pass.
 
 That makes a direct push a legitimate admin path rather than a footgun, which is what it
 is for — see [Adding a member by hand](#adding-a-member-by-hand) below. A pull request is
@@ -60,7 +61,7 @@ than an inconvenience.
 | Edited `members/` without rebuilding                | `ring.json` still serves the old entry                                    | `npm run validate` — "ring.json is out of date with members/\*.json" |
 | Edited `ring.json` by hand                          | Next rebuild silently reverts it                                          | Same check, same message                                             |
 | Deleted a member file, no rebuild                   | They stay in the ring, still linked                                       | Same check                                                           |
-| Pushed either straight to `main` without rebuilding | CI fails and no image is published                                        | `ci.yml`'s Ring data step, after the push                            |
+| Pushed either straight to `main` without rebuilding | CI fails on `main`                                                        | `ci.yml`, after the push                                             |
 | Changed an existing `id`                            | Their widget's `site-id` matches nothing, and `/update?node=` links break | `members:health` reports `ring_widget_site_id_unmatched`             |
 | Invented a `verification_token`                     | Their page does not carry it                                              | `members:health --check-tokens` warns until they place it            |
 | Added a member by pull request                      | Nobody proved they own the site                                           | Never, automatically — that is the trade                             |
