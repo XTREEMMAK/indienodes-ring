@@ -10,10 +10,12 @@
 			"caption": "FLUR: Blades of the Universe BK - 01"
 		},
 		{
-			"image_url": "https://dragonx3000.nekoweb.org/assets/page-2.webp"
+			"image_url": "https://dragonx3000.nekoweb.org/assets/page-2.webp",
+			"caption": "Lida and her Brother"
 		},
 		{
-			"image_url": "https://dragonx3000.nekoweb.org/assets/page-3.webp"
+			"image_url": "https://dragonx3000.nekoweb.org/assets/page-3.webp",
+			"caption": "FLUR Cover"
 		}
 	],
 	"thumb_url": "https://dragonx3000.nekoweb.org/assets/icon.webp",
@@ -22,5 +24,5 @@
 		"y": 50
 	},
 	"source_url": "https://dragonx3000.nekoweb.org/",
-	"verification_token": "86144e2a2439cfbc3cbc688e7af8677c"
+	"verification_token": "1cbdfc10b097971be7e26bb4884ed26b"
 }
