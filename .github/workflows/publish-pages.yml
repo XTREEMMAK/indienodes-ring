@@ -80,3 +80,22 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      # Tells indienodes-app to refresh its own committed ring.json mirror
+      # now, rather than waiting for that repo's own twice-daily fallback
+      # schedule (sync-ring.yml there). Needs write access to that repo to
+      # fire a dispatch, so a token scoped to *this* repo (RING_BUILD_PAT)
+      # cannot be reused here -- see APP_DISPATCH_PAT in this repo's own
+      # secrets. Not fatal if this step is ever skipped or fails: the
+      # fallback schedule on the other end still catches it within hours.
+      - name: Notify indienodes-app to refresh its mirror
+        if: steps.deployment.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.APP_DISPATCH_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "APP_DISPATCH_PAT is not set; skipping. indienodes-app will pick this up on its next scheduled sync instead." >&2
+            exit 0
+          fi
+          gh api --method POST /repos/XTREEMMAK/indienodes-app/dispatches \
+            -f event_type=ring-updated
