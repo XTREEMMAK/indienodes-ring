@@ -10,6 +10,27 @@
 #
 # Mirrors the "Ring data" step in indienodes-app's own ci.yml, which this
 # repo's data used to be validated by before the split.
+#
+# The unfiltered pull_request trigger above is deliberate, not an oversight:
+# it is what actually covers a fork PR that only touches members/*.json --
+# build-ring.yml can't push to a fork branch, and validate-ring.yml's own
+# path filter doesn't include members/**.json, so this is the only check that
+# catches a fork contributor who forgot `ring:build` before CI runs at all.
+# See docs/member-operations.md's "fails on a stale aggregate" row.
+#
+# The cost of that is a same-repo PR that only touches members/*.json (every
+# /join and /update submission) always opening with ring.json stale, since
+# build-ring.yml's regenerating commit hasn't landed yet when this workflow's
+# first run starts. That run fails validate:publish, then build-ring.yml
+# pushes the rebuilt ring.json, which re-triggers this workflow and it passes
+# seconds later -- but the first, doomed-to-fail run still sends a failure
+# email for a problem that was never real. The "Detect a same-repo,
+# members-only PR" step below skips just the validate:publish step for that
+# one specific case -- same repo (so build-ring.yml is guaranteed to follow
+# up) and members/**.json is the entire diff -- so it never fails for a
+# problem build-ring.yml is already in the middle of fixing. Anything else
+# (a fork PR, or a same-repo PR that also touches ring.json/scripts/etc.)
+# still validates immediately, unchanged.
 
 name: CI
 
@@ -27,13 +48,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
 
       - run: npm ci
-      - run: npm run validate:publish
+
+      - name: Detect a same-repo, members-only PR
+        id: pending-rebuild
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          mapfile -t changed < <(
+            git diff --name-only \
+              '${{ github.event.pull_request.base.sha }}' \
+              '${{ github.event.pull_request.head.sha }}'
+          )
+          members_only=true
+          for f in "${changed[@]}"; do
+            [[ "$f" =~ ^members/[^/]+\.json$ ]] || { members_only=false; break; }
+          done
+          echo "skip=$members_only" >> "$GITHUB_OUTPUT"
+
+      - name: Validate ring.json
+        if: steps.pending-rebuild.outputs.skip != 'true'
+        run: npm run validate:publish
       # scripts/member-health.test.js: the SSRF-safety checks (isPublicIpAddress,
       # assertStaticallySafeUrl, validateExternalUrl) that gate every outbound
       # request this repo's tooling makes on a member's say-so. Had zero test
