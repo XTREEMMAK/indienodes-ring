@@ -6,6 +6,7 @@
 	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
+		"prepare": "node scripts/install-hooks.mjs || true",
 		"ring:build": "node scripts/build-ring.js",
 		"validate": "node scripts/validate-ring.js",
 		"validate:publish": "node scripts/validate-ring.js --publish",

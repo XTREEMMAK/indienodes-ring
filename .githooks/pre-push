@@ -1,0 +1,35 @@
+#!/bin/sh
+# Refuses a push whose ring data does not match its member files.
+#
+# `ci.yml` already runs this check, and `docker-publish.yml` gates on `ci.yml`,
+# so a stale ring cannot reach production either way. What CI cannot do is keep
+# it out of the history: by the time CI speaks, the commit is on `main`. This
+# is the same check one step earlier, where the fix is still `ring:build` and
+# an amend rather than a follow-up commit apologising for the first one.
+#
+# It matters most for the path docs/member-operations.md calls "adding a member
+# by hand": nothing rebuilds ring.json for a direct push, so forgetting
+# `npm run ring:build` is the easy mistake, and this is where it gets caught.
+#
+# `--publish` to mirror exactly what CI runs, so the two cannot disagree about
+# whether a push is acceptable.
+#
+# Note it validates the working tree, not the commits being pushed. Uncommitted
+# drift blocks the push too. That is the intended bias — the check is cheap and
+# a dirty ring is worth knowing about — but it is why the escape hatch below is
+# worth knowing.
+#
+# To bypass once: git push --no-verify
+# To turn off entirely: git config --unset core.hooksPath
+
+if [ ! -f scripts/validate-ring.js ]; then
+	exit 0 # Not a full checkout; nothing to validate against.
+fi
+
+if ! node scripts/validate-ring.js --publish; then
+	echo ''
+	echo 'pre-push: ring data is not publishable, so this push was stopped.'
+	echo '          Run `npm run ring:build`, commit the result, and try again.'
+	echo '          To push anyway: git push --no-verify'
+	exit 1
+fi

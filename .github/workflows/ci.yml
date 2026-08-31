@@ -1,0 +1,36 @@
+# Validates ring data on every push to main, not just on pull requests.
+#
+# validate-ring.yml already covers PRs that touch ring.json, the schemas, or
+# the build/validate scripts. What it cannot cover is a direct push straight
+# to main -- the "adding a member by hand" path docs/member-operations.md
+# describes, where nothing rebuilds ring.json automatically and forgetting
+# `npm run ring:build` is the easy mistake. The pre-push hook (.githooks/)
+# catches that locally; this is the same check one step later, for anyone who
+# pushed with --no-verify or from a clone that never ran `npm install`.
+#
+# Mirrors the "Ring data" step in indienodes-app's own ci.yml, which this
+# repo's data used to be validated by before the split.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run validate:publish
