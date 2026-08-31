@@ -10,10 +10,11 @@
 			"type": "string",
 			"format": "uri",
 			"pattern": "^https://",
+			"maxLength": 2000,
 			"not": {
 				"pattern": "^https://([a-z0-9-]+\\.)*indienodes\\.us(/|$)"
 			},
-			"description": "An https URL to media hosted somewhere the creator controls, never on IndieNodes itself. The no-rehosting principle is the whole shape of this project, and encoding it here means `npm run validate:publish` enforces it on every entry rather than it living only as a sentence in the submission spec."
+			"description": "An https URL to media hosted somewhere the creator controls, never on IndieNodes itself. The no-rehosting principle is the whole shape of this project, and encoding it here means `npm run validate:publish` enforces it on every entry rather than it living only as a sentence in the submission spec. `maxLength` is the same rough ceiling browsers and servers already treat as a practical URL length limit -- generous for any real URL, a bound against a pathological one. Whether the URL actually resolves somewhere safe (not a private IP, not localhost, no embedded credentials) is `validate-ring.js`'s job, not this schema's: that rule needs a private-IP-range table a JSON Schema pattern cannot cleanly express, and it already exists once, in `member-health.js`."
 		}
 	},
 	"required": ["id", "creator", "type", "why", "source_url", "tags", "verification_token"],
@@ -21,15 +22,18 @@
 		"id": {
 			"type": "string",
 			"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+			"maxLength": 60,
 			"description": "Unique slug, lowercase with hyphens."
 		},
 		"creator": {
 			"type": "string",
-			"minLength": 1
+			"minLength": 1,
+			"maxLength": 100
 		},
 		"creator_id": {
 			"type": "string",
 			"minLength": 1,
+			"maxLength": 100,
 			"description": "Stable identifier linking this creator's nodes together. Assigned by the submission workflow, not the form. A data-only link: no ranking or weighting logic reads it. At most two nodes may share a creator_id, enforced as a moderation-checklist rule rather than in this schema."
 		},
 		"type": {
@@ -39,20 +43,24 @@
 		"why": {
 			"type": "string",
 			"minLength": 1,
-			"description": "A node represents a creator, not a single work: this is the one-line pitch where the creator makes their case, introduction and framing combined. Client-capped at 75 characters (see submissionValidation.js WHY_MAX_LENGTH) as a product decision, not enforced here."
+			"maxLength": 75,
+			"description": "A node represents a creator, not a single work: this is the one-line pitch where the creator makes their case, introduction and framing combined. Matches submissionValidation.js's own WHY_MAX_LENGTH -- that file used to be the only place this was enforced; now both agree, rather than the schema silently trusting a client-side cap it could not see."
 		},
 		"source_url": {
 			"type": "string",
 			"format": "uri",
-			"pattern": "^https://"
+			"pattern": "^https://",
+			"maxLength": 2000
 		},
 		"tags": {
 			"type": "array",
 			"minItems": 1,
-			"description": "At least one. Tags are how an entry becomes reachable: an untagged entry is invisible to the tag filters and to the tag list in Settings, so it would join the ring already unfindable by every route except scrolling past it.",
+			"maxItems": 20,
+			"description": "At least one. Tags are how an entry becomes reachable: an untagged entry is invisible to the tag filters and to the tag list in Settings, so it would join the ring already unfindable by every route except scrolling past it. Capped at 20 as a sanity bound, not a product target -- real entries carry a handful.",
 			"items": {
 				"type": "string",
-				"minLength": 1
+				"minLength": 1,
+				"maxLength": 30
 			},
 			"default": []
 		},
@@ -67,7 +75,8 @@
 				"properties": {
 					"label": {
 						"type": "string",
-						"minLength": 1
+						"minLength": 1,
+						"maxLength": 100
 					},
 					"media_url": {
 						"$ref": "#/$defs/externalMediaUrl"
@@ -77,7 +86,8 @@
 		},
 		"pages": {
 			"type": "array",
-			"description": "Comic only.",
+			"maxItems": 3,
+			"description": "Comic only. Capped at three, matching tracks/artworks/excerpts's own \"sampler, not a full catalog host\" reasoning above -- the one media array that had been left uncapped, not a deliberate exception.",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
@@ -87,7 +97,8 @@
 						"$ref": "#/$defs/externalMediaUrl"
 					},
 					"caption": {
-						"type": "string"
+						"type": "string",
+						"maxLength": 200
 					}
 				}
 			}
@@ -108,24 +119,29 @@
 					"alt": {
 						"type": "string",
 						"minLength": 1,
+						"maxLength": 300,
 						"description": "A meaningful text alternative for the artwork."
 					},
 					"title": {
 						"type": "string",
-						"minLength": 1
+						"minLength": 1,
+						"maxLength": 100
 					},
 					"year": {
 						"type": "string",
-						"minLength": 1
+						"minLength": 1,
+						"maxLength": 20
 					},
 					"medium": {
 						"type": "string",
-						"minLength": 1
+						"minLength": 1,
+						"maxLength": 50
 					},
 					"external_url": {
 						"type": "string",
 						"format": "uri",
-						"pattern": "^https://"
+						"pattern": "^https://",
+						"maxLength": 2000
 					}
 				}
 			}
@@ -145,12 +161,14 @@
 							"title": {
 								"type": "string",
 								"minLength": 1,
+								"maxLength": 100,
 								"description": "Optional name for this sample — a chapter, an essay title, a poem's first line. Omitted is a complete sample, not an incomplete one: an excerpt from an untitled piece has nothing to put here."
 							},
 							"text": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Sanitized HTML for this sample."
+								"maxLength": 5000,
+								"description": "Sanitized HTML for this sample. 5000 characters is generous room for a genuine short excerpt -- a few paragraphs -- while still bounding how much any one sample can grow."
 							},
 							"audio_url": {
 								"$ref": "#/$defs/externalMediaUrl",
@@ -161,6 +179,7 @@
 					{
 						"type": "string",
 						"minLength": 1,
+						"maxLength": 5000,
 						"description": "Legacy plain-text sample, still valid and never rewritten in place. New submissions emit the object form above."
 					}
 				]
@@ -197,6 +216,7 @@
 		"verification_token": {
 			"type": "string",
 			"minLength": 1,
+			"maxLength": 200,
 			"description": "Opaque string confirming submitter control of source_url or a third-party profile page."
 		},
 		"_placeholder": {
