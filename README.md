@@ -52,6 +52,8 @@ npm run members:health   # probe live URLs and continuing ring participation
   health checker probes and how to read its warnings
 - [`docs/emergency-member-removal.md`](docs/emergency-member-removal.md) —
   the narrow removal path and its required configuration
+- [`docs/adding-node-type.md`](docs/adding-node-type.md): coordinated schema,
+  client, renderer, submission, and rollout work for a new node type
 
 ## How a member actually joins
 
