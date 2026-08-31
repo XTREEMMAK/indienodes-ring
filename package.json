@@ -10,7 +10,8 @@
 		"ring:build": "node scripts/build-ring.js",
 		"validate": "node scripts/validate-ring.js",
 		"validate:publish": "node scripts/validate-ring.js --publish",
-		"members:health": "node scripts/check-member-links.js"
+		"members:health": "node scripts/check-member-links.js",
+		"test": "node --test"
 	},
 	"devDependencies": {
 		"ajv": "^8.20.0",

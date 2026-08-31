@@ -133,14 +133,22 @@ export function isPublicIpAddress(address) {
 	if (family === 6) {
 		const normalized = address.toLowerCase().split('%')[0];
 		if (normalized === '::' || normalized === '::1') return false;
+		// Checked before the blanket `::`-prefix rejection below: an IPv4-mapped
+		// address (::ffff:x.x.x.x, or the deprecated ::x.x.x.x form) also starts
+		// with `::`, and unwrapping it to re-check the embedded IPv4 address is
+		// the whole point of this branch. Ordered after that rejection instead,
+		// it would catch every mapped address first and this line could never
+		// run -- which is exactly the bug this comment replaces: every mapped
+		// address, including a plainly public one like ::ffff:93.184.216.34,
+		// was being rejected outright rather than unwrapped and re-checked.
+		const mapped = normalized.match(/^(?:::ffff:|::)(\d+\.\d+\.\d+\.\d+)$/);
+		if (mapped) return isPublicIpAddress(mapped[1]);
 		if (normalized.startsWith('::')) return false;
 		if (/^f[cd]/.test(normalized)) return false;
 		if (/^fe[89ab]/.test(normalized)) return false;
 		if (/^ff/.test(normalized)) return false;
 		if (/^2001:db8(?::|$)/.test(normalized)) return false;
 		if (/^2001:2(?::|$)/.test(normalized)) return false;
-		const mapped = normalized.match(/^(?:::ffff:|::)(\d+\.\d+\.\d+\.\d+)$/);
-		if (mapped) return isPublicIpAddress(mapped[1]);
 		return true;
 	}
 	return false;

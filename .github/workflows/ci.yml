@@ -34,3 +34,10 @@ jobs:
 
       - run: npm ci
       - run: npm run validate:publish
+      # scripts/member-health.test.js: the SSRF-safety checks (isPublicIpAddress,
+      # assertStaticallySafeUrl, validateExternalUrl) that gate every outbound
+      # request this repo's tooling makes on a member's say-so. Had zero test
+      # coverage from when this module moved here out of indienodes-app until
+      # 2026-08-31 -- see docs/webring-security-research-2026-08-31.md finding
+      # F-05 for why that mattered.
+      - run: npm test
