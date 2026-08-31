@@ -1,0 +1,97 @@
+# The whole-ring health run.
+#
+# `member-link-health.yml` is a different job with a different question: it
+# checks the member files a pull request touches, so a bad URL cannot be merged.
+# It never revisits an entry after that, which means link rot -- the failure this
+# project actually expects, since members host their own media -- would go
+# unnoticed indefinitely on everything already merged.
+#
+# docs/member-link-health.md describes Semaphore as the scheduler for this, and
+# that remains the intended home because it can hold the state file across runs.
+# This workflow is the fallback that does not depend on that host being healthy:
+# GitHub's runner is disposable, so there is no state between runs and the
+# three-strike threshold cannot apply. It therefore reports rather than gates --
+# `continue-on-error` keeps a broken URL from failing the default branch, since
+# nothing here should turn a member's temporary outage into a red repository.
+name: Member health (scheduled)
+
+on:
+  schedule:
+    # Weekly, Monday 07:00 UTC. Matches the cadence documented for Semaphore.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      check_tokens:
+        description: Also confirm each source page still carries its verification meta tag
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Stateless by necessity, so one transient failure is one warning rather
+      # than a strike toward an alert. --failure-threshold 1 makes a definite
+      # 404/410 visible in this run's own exit code.
+      - name: Check every member
+        id: health
+        continue-on-error: true
+        run: |
+          npm run members:health -- \
+            --no-state \
+            --failure-threshold 1 \
+            ${{ inputs.check_tokens && '--check-tokens' || '' }} \
+            --json | tee health.json
+
+      - name: Summarize
+        if: always()
+        run: |
+          if [[ ! -s health.json ]]; then
+            echo '### Member health: the run produced no report' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("health.json", "utf8"));
+            const s = r.summary;
+            const out = [];
+            out.push("### Member health");
+            out.push("");
+            out.push(`${s.membersChecked} member(s), ${s.urlsChecked} URL(s): ` +
+              `${s.healthy} healthy, ${s.broken} broken, ${s.warnings} warning(s).`);
+            const bad = r.results.filter((x) => x.outcome !== "healthy");
+            if (bad.length) {
+              out.push("", "| Outcome | Reason | URL | Member |", "| --- | --- | --- | --- |");
+              for (const x of bad) {
+                const refs = x.references.map((f) => `${f.memberFile}:${f.field}`).join(", ");
+                out.push(`| ${x.outcome} | \`${x.reason}\` | ${x.url} | ${refs} |`);
+              }
+            }
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join("\n") + "\n");
+          '
+
+      - name: Fail only on a definite dead link
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs");
+            if (!fs.existsSync("health.json")) process.exit(0);
+            const r = JSON.parse(fs.readFileSync("health.json", "utf8"));
+            const dead = r.results.filter((x) => x.outcome === "broken");
+            if (dead.length) {
+              console.error(`${dead.length} URL(s) returned 404/410.`);
+              process.exit(1);
+            }
+            console.log("No definitely dead URLs. Warnings, if any, are in the summary.");
+          '

@@ -1,0 +1,19 @@
+{
+	"name": "indienodes-ring",
+	"description": "The canonical IndieNodes ring: member records, the entry and document schemas, and the tooling that builds and validates ring.json from them.",
+	"license": "GPL-3.0-or-later",
+	"private": true,
+	"version": "1.0.0",
+	"type": "module",
+	"scripts": {
+		"ring:build": "node scripts/build-ring.js",
+		"validate": "node scripts/validate-ring.js",
+		"validate:publish": "node scripts/validate-ring.js --publish",
+		"members:health": "node scripts/check-member-links.js"
+	},
+	"devDependencies": {
+		"ajv": "^8.20.0",
+		"ajv-formats": "^3.0.1",
+		"prettier": "^3.8.3"
+	}
+}

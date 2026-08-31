@@ -1,0 +1,44 @@
+name: Check changed member links
+
+on:
+  pull_request:
+    paths:
+      - 'members/**.json'
+      - 'scripts/check-member-links.js'
+      - 'scripts/member-health.js'
+
+permissions:
+  contents: read
+
+jobs:
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check new and changed member files
+        shell: bash
+        run: |
+          mapfile -t member_files < <(
+            git diff --name-only --diff-filter=AM \
+              '${{ github.event.pull_request.base.sha }}' \
+              '${{ github.event.pull_request.head.sha }}' \
+              -- 'members/*.json'
+          )
+          if (( ${#member_files[@]} == 0 )); then
+            echo 'No added or modified member files to check.'
+            exit 0
+          fi
+          npm run members:health -- \
+            --no-state \
+            --failure-threshold 1 \
+            "${member_files[@]}"

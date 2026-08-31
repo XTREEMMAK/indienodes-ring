@@ -1,0 +1,20 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://indienodes.us/schema/ring-document.json",
+	"title": "Ring document",
+	"description": "The document published at ring.json: an envelope carrying its own version alongside the list of entries. Introduced once ring.json became a target for clients other than this app's own build — a packaged client or a future third party needs a version to check before it can safely assume anything about the entries it did not recognize. See docs/decisions.md, 'LOCKED: ring.json is a versioned envelope'.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["version", "entries"],
+	"properties": {
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+$",
+			"description": "The envelope's own shape version — whether a client can read `version`, `entries`, and nothing else without surprises. Independent of any individual entry's shape, which schema/ring.schema.json governs on its own. A client that does not recognize this value should still try to read `entries` rather than refuse the document outright: see src/lib/ring.js's `ringEntries`."
+		},
+		"entries": {
+			"type": "array",
+			"items": { "$ref": "https://indienodes.us/schema/ring-entry.json" }
+		}
+	}
+}

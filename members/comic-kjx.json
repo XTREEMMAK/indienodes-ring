@@ -1,0 +1,26 @@
+{
+	"id": "comic-kjx",
+	"creator": "KJX",
+	"type": "comic",
+	"why": "Anime and Manga Indie Comics",
+	"tags": ["anime", "manga", "shounen"],
+	"pages": [
+		{
+			"image_url": "https://dragonx3000.nekoweb.org/assets/page-1.webp",
+			"caption": "FLUR: Blades of the Universe BK - 01"
+		},
+		{
+			"image_url": "https://dragonx3000.nekoweb.org/assets/page-2.webp"
+		},
+		{
+			"image_url": "https://dragonx3000.nekoweb.org/assets/page-3.webp"
+		}
+	],
+	"thumb_url": "https://dragonx3000.nekoweb.org/assets/icon.webp",
+	"thumb_position": {
+		"x": 50,
+		"y": 50
+	},
+	"source_url": "https://dragonx3000.nekoweb.org/",
+	"verification_token": "86144e2a2439cfbc3cbc688e7af8677c"
+}

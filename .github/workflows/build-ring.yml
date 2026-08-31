@@ -1,0 +1,68 @@
+# Keeps ring.json in sync with members/*.json automatically. ring.json is a
+# generated artifact (scripts/build-ring.js) and validate-ring.yml's
+# validate:publish check compares it byte-for-byte against the real Prettier
+# output (scripts/validate-ring.js) - nothing outside that exact toolchain
+# can regenerate it correctly, including a bot committing a PR. This exists
+# so neither a human nor the n8n submission workflow has to remember to run
+# `npm run ring:build` by hand before every PR touching members/*.json.
+#
+# Restricted to same-repo branches on purpose: a fork PR's branch can't be
+# pushed to by this repo's default token anyway, and auto-committing based on
+# an external contributor's PR content without review first is exactly the
+# "pwn request" pattern GitHub's own Actions security guidance warns against.
+# n8n only ever opens PRs from branches in this repo, so this still covers
+# the case that actually needs it.
+#
+# Checkout uses RING_BUILD_PAT, not the default GITHUB_TOKEN, deliberately:
+# GitHub does not trigger new workflow runs from a push authenticated with
+# the auto-issued GITHUB_TOKEN (anti-recursion protection), which meant
+# validate-ring.yml and docker-publish.yml silently never re-ran against the
+# commit this workflow makes - confirmed live, the resulting check runs
+# existed but had zero jobs. A real PAT push doesn't have that restriction.
+# RING_BUILD_PAT is the same fine-grained, this-repo-only, Contents:R&W PAT
+# already used as an n8n credential - same token, added a second time here
+# as a GitHub Actions repo secret (Settings > Secrets and variables >
+# Actions), since n8n's credential store and GitHub Actions secrets are two
+# separate systems with no way to share one value between them.
+
+name: Auto-build ring.json
+
+on:
+  pull_request:
+    paths:
+      - 'members/**.json'
+
+jobs:
+  build-ring:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.RING_BUILD_PAT }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      # n8n cannot load this repository's Prettier dependency. Formatting here
+      # is a second line of defence for same-repo automation branches, while
+      # the workflow generator still emits canonical JSON up front.
+      - run: npx prettier --write 'members/*.json' --no-error-on-unmatched-pattern
+      - run: npm run ring:build
+
+      - name: Commit formatted members and regenerated ring.json if changed
+        run: |
+          if ! git diff --quiet -- members ring.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add ring.json
+            if [[ -d members ]]; then
+              git add -A -- members
+            fi
+            git commit -m "chore: format members and regenerate ring.json"
+            git push
+          fi

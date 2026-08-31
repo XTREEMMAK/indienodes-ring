@@ -1,0 +1,139 @@
+# Fast, audited removal path for incidents where the normal creator request
+# flow is too slow or unavailable. This deliberately opens a PR instead of
+# writing to main: validation, review history, and the ordinary image publish
+# path remain intact even during an emergency.
+#
+# The job is fail-closed until the `emergency-member-removal` GitHub
+# Environment is configured with required reviewers and an environment-level
+# variable named EMERGENCY_REMOVAL_ENABLED whose value is exactly `enabled`.
+# See docs/emergency-member-removal.md.
+
+name: Emergency member removal
+
+on:
+  workflow_dispatch:
+    inputs:
+      member_id:
+        description: Member id to remove (for example, audio-key-jay)
+        required: true
+        type: string
+      reason:
+        description: Incident reason recorded in the commit and pull request
+        required: true
+        type: string
+      confirmation:
+        description: Type REMOVE followed by a space and the member id
+        required: true
+        type: string
+
+concurrency:
+  group: emergency-member-removal
+  cancel-in-progress: false
+
+jobs:
+  open-removal-pr:
+    name: Open emergency removal PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: emergency-member-removal
+    permissions:
+      contents: read
+
+    steps:
+      - name: Confirm protected environment is enabled
+        env:
+          EMERGENCY_REMOVAL_ENABLED: ${{ vars.EMERGENCY_REMOVAL_ENABLED }}
+        run: |
+          if [[ "$EMERGENCY_REMOVAL_ENABLED" != "enabled" ]]; then
+            echo "Emergency removal is disabled. Configure the protected GitHub Environment first." >&2
+            exit 1
+          fi
+
+      - name: Validate request
+        env:
+          MEMBER_ID: ${{ inputs.member_id }}
+          REASON: ${{ inputs.reason }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ ! "$MEMBER_ID" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+            echo "member_id must be a lowercase, hyphen-separated id." >&2
+            exit 1
+          fi
+
+          if [[ "$CONFIRMATION" != "REMOVE $MEMBER_ID" ]]; then
+            echo "confirmation must exactly match: REMOVE $MEMBER_ID" >&2
+            exit 1
+          fi
+
+          if [[ ${#REASON} -lt 10 || ${#REASON} -gt 1000 ]]; then
+            echo "reason must be between 10 and 1000 characters." >&2
+            exit 1
+          fi
+
+      # A PAT is intentional. A PR opened from the default GITHUB_TOKEN does
+      # not trigger the pull_request workflows that validate and build the
+      # ring. RING_BUILD_PAT is already used by build-ring.yml for that same
+      # anti-recursion reason and must also have Pull requests: Read & write.
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.RING_BUILD_PAT }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Remove member and validate generated ring
+        env:
+          MEMBER_ID: ${{ inputs.member_id }}
+        run: |
+          member_path="members/${MEMBER_ID}.json"
+
+          if [[ ! -f "$member_path" ]]; then
+            echo "No member source exists at $member_path on main." >&2
+            exit 1
+          fi
+
+          git rm -- "$member_path"
+          npm run ring:build
+          npm run validate:publish
+
+      - name: Commit and push incident branch
+        env:
+          MEMBER_ID: ${{ inputs.member_id }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          branch_name="emergency/remove-${MEMBER_ID}-${GITHUB_RUN_ID}"
+          git switch -c "$branch_name"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -- ring.json
+          git commit -m "fix(members): emergency remove ${MEMBER_ID}" -m "Reason: ${REASON}"
+          git push --set-upstream origin "$branch_name"
+          echo "BRANCH_NAME=$branch_name" >> "$GITHUB_ENV"
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ secrets.RING_BUILD_PAT }}
+          MEMBER_ID: ${{ inputs.member_id }}
+          REASON: ${{ inputs.reason }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+        run: |
+          body=$(printf '%s\n\n%s\n\n%s\n' \
+            "Emergency removal requested by @${GITHUB_ACTOR}." \
+            "Reason: ${REASON}" \
+            "Audit run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}")
+
+          pr_url=$(gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "Emergency removal: ${MEMBER_ID}" \
+            --body "$body")
+
+          printf 'Emergency removal PR: %s\n' "$pr_url" >> "$GITHUB_STEP_SUMMARY"

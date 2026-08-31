@@ -1,0 +1,270 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://indienodes.us/schema/ring-entry.json",
+	"title": "Ring entry",
+	"description": "A single entry in ring.json. See docs/submission-form-spec.md section 2.1 for the field-by-field notes.",
+	"type": "object",
+	"additionalProperties": false,
+	"$defs": {
+		"externalMediaUrl": {
+			"type": "string",
+			"format": "uri",
+			"pattern": "^https://",
+			"not": {
+				"pattern": "^https://([a-z0-9-]+\\.)*indienodes\\.us(/|$)"
+			},
+			"description": "An https URL to media hosted somewhere the creator controls, never on IndieNodes itself. The no-rehosting principle is the whole shape of this project, and encoding it here means `npm run validate:publish` enforces it on every entry rather than it living only as a sentence in the submission spec."
+		}
+	},
+	"required": ["id", "creator", "type", "why", "source_url", "tags", "verification_token"],
+	"properties": {
+		"id": {
+			"type": "string",
+			"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+			"description": "Unique slug, lowercase with hyphens."
+		},
+		"creator": {
+			"type": "string",
+			"minLength": 1
+		},
+		"creator_id": {
+			"type": "string",
+			"minLength": 1,
+			"description": "Stable identifier linking this creator's nodes together. Assigned by the submission workflow, not the form. A data-only link: no ranking or weighting logic reads it. At most two nodes may share a creator_id, enforced as a moderation-checklist rule rather than in this schema."
+		},
+		"type": {
+			"type": "string",
+			"enum": ["audio", "comic", "text", "game", "art"]
+		},
+		"why": {
+			"type": "string",
+			"minLength": 1,
+			"description": "A node represents a creator, not a single work: this is the one-line pitch where the creator makes their case, introduction and framing combined. Client-capped at 75 characters (see submissionValidation.js WHY_MAX_LENGTH) as a product decision, not enforced here."
+		},
+		"source_url": {
+			"type": "string",
+			"format": "uri",
+			"pattern": "^https://"
+		},
+		"tags": {
+			"type": "array",
+			"minItems": 1,
+			"description": "At least one. Tags are how an entry becomes reachable: an untagged entry is invisible to the tag filters and to the tag list in Settings, so it would join the ring already unfindable by every route except scrolling past it.",
+			"items": {
+				"type": "string",
+				"minLength": 1
+			},
+			"default": []
+		},
+		"tracks": {
+			"type": "array",
+			"maxItems": 3,
+			"description": "Audio only, and optional. Capped at three so the ring stays a sampler, not a full catalog host. An audio entry with no tracks is a deliberate, supported shape: a link-only member, listed in the ring with its cover and a link out but not playable in-app. Playback needs a direct file the browser can fetch cross-origin (see docs/open-questions.md), which not every creator can supply, and refusing those creators entry would serve the ring worse than listing them.",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["label", "media_url"],
+				"properties": {
+					"label": {
+						"type": "string",
+						"minLength": 1
+					},
+					"media_url": {
+						"$ref": "#/$defs/externalMediaUrl"
+					}
+				}
+			}
+		},
+		"pages": {
+			"type": "array",
+			"description": "Comic only.",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["image_url"],
+				"properties": {
+					"image_url": {
+						"$ref": "#/$defs/externalMediaUrl"
+					},
+					"caption": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"artworks": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 3,
+			"description": "Art only. One to three works selected to represent the creator rather than a full catalog.",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["image_url", "alt"],
+				"properties": {
+					"image_url": {
+						"$ref": "#/$defs/externalMediaUrl"
+					},
+					"alt": {
+						"type": "string",
+						"minLength": 1,
+						"description": "A meaningful text alternative for the artwork."
+					},
+					"title": {
+						"type": "string",
+						"minLength": 1
+					},
+					"year": {
+						"type": "string",
+						"minLength": 1
+					},
+					"medium": {
+						"type": "string",
+						"minLength": 1
+					},
+					"external_url": {
+						"type": "string",
+						"format": "uri",
+						"pattern": "^https://"
+					}
+				}
+			}
+		},
+		"excerpts": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 3,
+			"description": "Text only. Between one and three short samples. Each sample's own audio is optional: when a creator supplies none, the reader hears an automatic text-to-speech reading instead. Two item shapes are valid on purpose: the object form every new submission produces, and the bare string form entries published before samples carried their own audio. Both are accepted so existing member files stay valid without a migration; `normalizeEntry` in src/lib/ring.js lifts the string form to the object form at read time, so nothing downstream of it sees two shapes.",
+			"items": {
+				"oneOf": [
+					{
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["text"],
+						"properties": {
+							"title": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Optional name for this sample — a chapter, an essay title, a poem's first line. Omitted is a complete sample, not an incomplete one: an excerpt from an untitled piece has nothing to put here."
+							},
+							"text": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Sanitized HTML for this sample."
+							},
+							"audio_url": {
+								"$ref": "#/$defs/externalMediaUrl",
+								"description": "The creator's own recording of this sample, read aloud. Omitted means text-to-speech is used instead."
+							}
+						}
+					},
+					{
+						"type": "string",
+						"minLength": 1,
+						"description": "Legacy plain-text sample, still valid and never rewritten in place. New submissions emit the object form above."
+					}
+				]
+			}
+		},
+		"thumb_url": {
+			"$ref": "#/$defs/externalMediaUrl",
+			"description": "Cover or representative image for the entry: album art, a header image, a screenshot. Required for game entries (see allOf below); optional and encouraged for every other type, where the field view uses it as the card's background instead of a flat color wash. Comics and Art fall back to their first page or artwork when this is absent."
+		},
+		"thumb_position": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["x", "y"],
+			"description": "Normalized focal point for cropping a cover inside a node. Percentages remain stable as the node is resized; omitted entries default to the center.",
+			"properties": {
+				"x": { "type": "number", "minimum": 0, "maximum": 100 },
+				"y": { "type": "number", "minimum": 0, "maximum": 100 }
+			}
+		},
+		"preview_url": {
+			"$ref": "#/$defs/externalMediaUrl",
+			"description": "Game only. Muted preview, never autoplaying audio."
+		},
+		"trailer_url": {
+			"type": "string",
+			"format": "uri",
+			"pattern": "^https://(?:(?:(?:www|m|music)\\.)?youtube\\.com/(?:watch\\?(?:[^#]*&)?v=|embed/|shorts/|live/)|(?:www\\.)?youtu\\.be/)[A-Za-z0-9_-]{11}(?:[?&#/]|$)",
+			"description": "Game only. Optional YouTube trailer; loaded only after an explicit play action."
+		},
+		"explicit": {
+			"type": "boolean",
+			"description": "Self-declared: the entry contains explicit adult content. Hidden by default; visitors opt in to seeing it in Settings. Omit for everything else."
+		},
+		"verification_token": {
+			"type": "string",
+			"minLength": 1,
+			"description": "Opaque string confirming submitter control of source_url or a third-party profile page."
+		},
+		"_placeholder": {
+			"type": "boolean",
+			"description": "Marks a seed or example entry. Real submissions must omit this field."
+		}
+	},
+	"allOf": [
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "comic"
+					}
+				}
+			},
+			"then": {
+				"required": ["pages"],
+				"properties": {
+					"pages": {
+						"type": "array",
+						"minItems": 1
+					}
+				}
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "art"
+					}
+				}
+			},
+			"then": {
+				"required": ["artworks"],
+				"properties": {
+					"artworks": {
+						"type": "array",
+						"minItems": 1,
+						"maxItems": 3
+					}
+				}
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "text"
+					}
+				}
+			},
+			"then": {
+				"required": ["excerpts"]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "game"
+					}
+				}
+			},
+			"then": {
+				"required": ["thumb_url"]
+			}
+		}
+	]
+}
