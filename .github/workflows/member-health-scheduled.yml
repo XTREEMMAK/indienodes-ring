@@ -52,8 +52,11 @@ jobs:
       - name: Check every member
         id: health
         continue-on-error: true
+        # --silent: without it, npm's own "> indienodes-ring@1.0.0 members:health"
+        # banner goes to stdout ahead of the --json output, so `tee health.json`
+        # writes that banner into the file too and every later JSON.parse fails.
         run: |
-          npm run members:health -- \
+          npm run --silent members:health -- \
             --no-state \
             --failure-threshold 1 \
             ${{ inputs.check_tokens && '--check-tokens' || '' }} \

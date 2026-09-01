@@ -170,7 +170,8 @@ stripped on export and must be re-selected after import). Node chain:
    makes, ~20 minute timeout.
 4. **Code node** — tracks the three-consecutive-`broken` streak per URL in
    `$getWorkflowStaticData('global')`, replacing `--state`.
-5. **IF** + **HTTP Request (Gotify)** — alerts once a URL's streak reaches 3.
+5. **IF** + **Gotify** (the native n8n node, not a raw HTTP request) — alerts
+   once a URL's streak reaches 3.
 
 The existing /update flow is how a creator replaces a dead resource after a
 maintainer confirms the report.
