@@ -40,6 +40,67 @@ export function loadMembers() {
 }
 
 /**
+ * Stamps `joined_at` onto any member whose entry doesn't already have one,
+ * idempotently: an existing value is never touched. This is what lets
+ * `joined_at` be a required field without a separate backfill step or any
+ * change to build-ring.yml -- the same "commit members + ring.json together,
+ * only if changed" step that workflow already runs picks up a freshly
+ * stamped file exactly like any other edit.
+ *
+ * Deliberately does not touch `updated_at`: RSS 2.0 has no separate
+ * "updated" concept the way Atom does, so an auto-bumped value here would
+ * have nowhere correct to flow in scripts/build-feed.js without making
+ * already-read feed items look unread again. It stays an explicit,
+ * human/automation-set field, the same as verification_token.
+ *
+ * Mutates each touched member's `entry` in place (so the caller's own
+ * `members` array reflects the new value for anything built from it in the
+ * same run, e.g. serializeRing) and returns just the members that changed,
+ * so the caller knows which files actually need rewriting to disk.
+ *
+ * @param {{ file: string, expectedId: string, entry: Record<string, unknown> }[]} members
+ * @param {{ now?: string }} [options]
+ * @returns {{ file: string, expectedId: string, entry: Record<string, unknown> }[]}
+ */
+export function stampJoinedAt(members, { now = new Date().toISOString() } = {}) {
+	const touched = [];
+	for (const member of members) {
+		if (typeof member.entry.joined_at !== 'string') {
+			member.entry = { ...member.entry, joined_at: now };
+			touched.push(member);
+		}
+	}
+	return touched;
+}
+
+/**
+ * Formats one member entry to match what build-ring.yml's own
+ * `prettier --write 'members/*.json'` step would produce on the same file --
+ * one canonical style, not two that happen to agree most of the time.
+ *
+ * `JSON.stringify(entry, null, '\t')`, not the minified `JSON.stringify(entry)`
+ * serializeRing uses for ring.json: Prettier's JSON printer keeps an object
+ * or array on one line only if there was no newline between its opening
+ * bracket and first element in the *input* it was given, the same way it
+ * preserves a human's own choice to break a JS object across lines. A fully
+ * minified input has no such newlines anywhere, so formatting one collapses
+ * every nested object/array that fits under printWidth -- silently
+ * reformatting parts of the file this function was never asked to touch.
+ * Feeding it already-indented JSON preserves that per-object hint, so this
+ * changes only what it's supposed to (the newly added key) and leaves
+ * everything else exactly as the file's own last real format left it.
+ *
+ * @param {Record<string, unknown>} entry
+ */
+export function formatMemberJson(entry) {
+	return format(JSON.stringify(entry, null, '\t'), {
+		parser: 'json',
+		useTabs: true,
+		printWidth: 100
+	});
+}
+
+/**
  * The envelope's own shape version, independent of any individual entry's
  * shape (schema/ring.schema.json governs that). Bumping this is a decision
  * about the document, not something a member's data ever needs to touch —

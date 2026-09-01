@@ -24,7 +24,8 @@
 			"thumb_url": "https://keyjay.neocities.org/assets/indienodes-keyjay/IMG_0481.JPG",
 			"thumb_position": { "x": 50, "y": 50 },
 			"source_url": "https://keyjay.neocities.org",
-			"verification_token": "b44d66453a90b0b287a95edb2bece2cc"
+			"verification_token": "b44d66453a90b0b287a95edb2bece2cc",
+			"joined_at": "2026-09-01T21:33:43.026Z"
 		},
 		{
 			"id": "comic-kjc-comix",
@@ -46,7 +47,8 @@
 			"thumb_url": "https://dragonx3000.nekoweb.org/assets/icon.webp",
 			"thumb_position": { "x": 50, "y": 50 },
 			"source_url": "https://dragonx3000.nekoweb.org/",
-			"verification_token": "d8c1e37fba068cfcba7eec279141a16d"
+			"verification_token": "d8c1e37fba068cfcba7eec279141a16d",
+			"joined_at": "2026-09-01T21:33:43.026Z"
 		}
 	]
 }
