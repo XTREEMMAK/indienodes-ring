@@ -34,15 +34,24 @@ healthy or uncertain result resets that URL's definite-failure streak. Nothing
 automatically removes a member or edits ring data.
 
 Continuing participation is checked by default on source pages. The checker
-recognizes a full `<indienode-widget>` whose `site-id` matches the member and the
-canonical `/go/random` link used by the script-free badge and text-link tiers.
-A `site-id` is matched case-insensitively and trimmed, and hrefs are resolved
-against the page's own final URL, so a protocol-relative
-`//indienodes.us/go/random` counts where it previously did not. Note that a
-root-relative `/go/random` resolves to the member's _own_ site and is correctly not
-a ring link. Absence is a warning for human review, never an automatic
-removal. Use `--no-participation-check` only for a deliberately availability-only
-run.
+recognizes three tiers: a full `<indienode-widget>` whose `site-id` matches the
+member, an `<iframe>` whose `src` is `indienodes.us/embed-frame?site-id=<id>` for
+that same member, and the canonical `/go/random` link used by the script-free
+badge and text-link tiers. A `site-id` is matched case-insensitively and trimmed
+in both embed tiers, and `href`/`src` are resolved against the page's own final
+URL, so a protocol-relative `//indienodes.us/go/random` counts where it previously
+did not. Note that a root-relative `/go/random` or `/embed-frame` resolves to the
+member's _own_ site and is correctly not a ring link. Absence is a warning for
+human review, never an automatic removal. Use `--no-participation-check` only for
+a deliberately availability-only run.
+
+The frame tier is not an afterthought: it is the integration
+[`webring-security-research-2026-08-31.md`](./webring-security-research-2026-08-31.md)
+recommends as the default, since a sandboxed cross-origin frame cannot reach the
+host page the way the script widget can. It went unrecognized here until
+2026-09-01 — only `<a>` hrefs were inspected for a ring destination, and an
+`<iframe src>` is not an `<a>` — so a member carrying the _recommended_ embed was
+reported as not participating at all.
 
 Only `source_url` is checked, which is the requirement rather than a shortcut: it
 is the one page whose ownership was proven, and the one page visitors are sent to.
@@ -57,11 +66,11 @@ and a far wider address-screening surface than the single-URL model above, and
 Participation produces three distinct reasons, because "we did not find it" and
 "there is nothing there" are different claims and only one of them is ever certain.
 
-| Reason                             | What it means                                                                     | Usual fix                                          |
-| ---------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `ring_widget_site_id_unmatched`    | The page carries an `<indienode-widget>`, but its `site-id` matches no member id. | Tell the member to correct one attribute.          |
-| `ring_participation_indeterminate` | Nothing was found, **and** the page hit the read limit before the end.            | Open the page and look. The checker does not know. |
-| `ring_participation_missing`       | Nothing was found in a page read to completion.                                   | Ask the member to add a ring link.                 |
+| Reason                             | What it means                                                                                           | Usual fix                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `ring_widget_site_id_unmatched`    | The page carries a ring embed — widget or `/embed-frame` iframe — whose `site-id` matches no member id. | Tell the member to correct one attribute.          |
+| `ring_participation_indeterminate` | Nothing was found, **and** the page hit the read limit before the end.                                  | Open the page and look. The checker does not know. |
+| `ring_participation_missing`       | Nothing was found in a page read to completion.                                                         | Ask the member to add a ring link.                 |
 
 The most likely of the three is the first, and it is largely our own doing. The
 `/widget` page hands out the snippet with `site-id="your-ring-entry-id"`, a
@@ -156,22 +165,52 @@ dispatch are unaffected). When set, a final step POSTs `health.json` to it.
 This lets an external scheduler hold state without this repository needing to
 know what that scheduler is.
 
-The n8n workflow that uses this is checked in at
-`scripts/n8n/backups/member-health.json` (import it into n8n; credentials are
-stripped on export and must be re-selected after import). Node chain:
+This is **two** n8n workflows, not one, both checked in under
+`scripts/n8n/backups/` (import them; credentials are stripped on export and must
+be re-selected after import, and both must be **published** before their triggers
+go live):
+
+`member-health-dispatcher.json` — fires and forgets:
 
 1. **Schedule Trigger** — weekly, ahead of the `0 7 * * 1` fallback cron above
    so that cron stays a true fallback rather than a race.
-2. **HTTP Request** — dispatches this workflow via the GitHub API, passing
-   n8n's own `{{ $execution.resumeUrl }}` as `resume_url`. Auth is a
-   fine-grained PAT (Actions: read/write, scoped to this repo only) stored in
-   n8n's own credential store — not a repository or Actions secret.
-3. **Wait node** — resumes on the webhook call this workflow's last step
-   makes, ~20 minute timeout.
+2. **HTTP Request** — dispatches this workflow via the GitHub API, passing the
+   receiver's static webhook URL as `resume_url`. Auth is a fine-grained PAT
+   (Actions: read/write, scoped to this repo only) stored in n8n's own
+   credential store — not a repository or Actions secret.
+
+`member-health-receiver.json` — a plain webhook trigger at
+`/webhook/indienodes-member-health`, the URL the dispatcher hands to GitHub:
+
+3. **Webhook** — responds immediately; the GitHub job never reads the response.
 4. **Code node** — tracks the three-consecutive-`broken` streak per URL in
-   `$getWorkflowStaticData('global')`, replacing `--state`.
+   `$getWorkflowStaticData('global')`, replacing `--state`. The streak history
+   therefore lives in the receiver, which is the workflow that runs every time.
 5. **IF** + **Gotify** (the native n8n node, not a raw HTTP request) — alerts
    once a URL's streak reaches 3.
+
+### Why two workflows instead of one Wait node
+
+The obvious shape is one workflow that dispatches, pauses on a **Wait** node
+resuming from `{{ $execution.resumeUrl }}`, then alerts. That was the original
+design and it does not work on n8n 2.x: resuming a paused execution runs an
+internal project-ownership permission check that still queries a `user.role`
+column n8n's own `RemoveOldRoleColumn` migration deleted, so the resume fails
+with `column ... role does not exist` (upstream bug, see
+[n8n#20697](https://github.com/n8n-io/n8n/issues/20697), reported there against a
+different trigger). The webhook resume returns a misleading
+`404 ... does not contain a waiting webhook` while the execution sits in the UI
+looking like it is still waiting, and the 20-minute ceiling then expires.
+
+Splitting the flow sidesteps it entirely: nothing ever pauses, so nothing ever
+resumes. A static production webhook starts a **fresh** execution, which is the
+ordinary trigger path every other workflow uses. It is also simply more robust —
+the URL does not expire, carries no per-execution signature, survives n8n
+restarts, and imposes no deadline on how long the GitHub job may take.
+
+`member-health-scheduled.yml` needs no change for this. Its `resume_url` input
+only ever gets `curl`'d, and never cared whether the URL was an n8n resume URL or
+an ordinary webhook; the name is now a slight misnomer.
 
 The existing /update flow is how a creator replaces a dead resource after a
 maintainer confirms the report.

@@ -1,0 +1,66 @@
+{
+	"name": "IndieNodes member health - dispatcher",
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "weeks",
+							"weeksInterval": 1,
+							"triggerAtDay": [1],
+							"triggerAtHour": 6,
+							"triggerAtMinute": 0
+						}
+					]
+				}
+			},
+			"id": "e1be89d3-e23b-44aa-aec0-9a80ad20781a",
+			"name": "Weekly Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [240, 300],
+			"notes": "An hour ahead of member-health-scheduled.yml's own 0 7 * * 1 fallback cron, so that fallback stays a fallback rather than a race."
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://api.github.com/repos/XTREEMMAK/indienodes-ring/actions/workflows/member-health-scheduled.yml/dispatches",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "Accept", "value": "application/vnd.github+json" },
+						{ "name": "X-GitHub-Api-Version", "value": "2022-11-28" }
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ { \"ref\": \"main\", \"inputs\": { \"resume_url\": \"https://n8n.kjnet.us/webhook/indienodes-member-health\" } } }}",
+				"options": {}
+			},
+			"id": "3cde4dcd-a7df-465a-9d59-1bbc6391d104",
+			"name": "Dispatch member-health-scheduled.yml",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [460, 300],
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "REPLACE_ME",
+					"name": "GitHub PAT - indienodes-ring (Actions RW)"
+				}
+			},
+			"notes": "Header credential: name 'Authorization', value 'Bearer <fine-grained PAT scoped to indienodes-ring, Actions: read/write>'. The resume_url input is the static production webhook of the 'IndieNodes member health - receiver' workflow, NOT $execution.resumeUrl: this workflow does not pause, so there is no execution to resume. See docs/member-link-health.md."
+		}
+	],
+	"connections": {
+		"Weekly Trigger": {
+			"main": [[{ "node": "Dispatch member-health-scheduled.yml", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
