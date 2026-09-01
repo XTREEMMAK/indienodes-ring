@@ -183,15 +183,24 @@ go live):
 `/webhook/indienodes-member-health`, the URL the dispatcher hands to GitHub:
 
 3. **Webhook** — responds immediately; the GitHub job never reads the response.
-4. **Code node** — tracks the three-consecutive-`broken` streak per URL in
-   `$getWorkflowStaticData('global')`, replacing `--state`. The streak history
-   therefore lives in the receiver, which is the workflow that runs every time.
-5. **IF** + **Code node** ("Track streaks") also stashes the alert detail under
-   a random token in `staticData.reports` and builds `reportUrl`, so the next
-   step's push can stay short.
-6. **Gotify** (the native n8n node, not a raw HTTP request) — a one-line push
-   ("N member link(s) crossed the failure threshold. Tap for the full
-   report."), with `reportUrl` set as the node's Click URL.
+4. **Code node** ("Track streaks") — tracks the three-consecutive-`broken`
+   streak per URL in `$getWorkflowStaticData('global')`, replacing `--state`.
+   The streak history therefore lives in the receiver, which is the workflow
+   that runs every time. When a URL crosses the threshold, it also stashes the
+   alert detail under a random token in `staticData.reports` and builds
+   `reportUrl`, so the next step's push can stay short.
+5. **IF** — only alerted URLs continue to the next step.
+6. **Gotify** (the native n8n node, not a raw HTTP request) — a short markdown
+   push: `"N member link(s) crossed the failure threshold.\n\n[Full
+report](<reportUrl>)"`. Not `clickUrl`: that Options field doesn't exist in
+   the Gotify node as shipped in n8n 2.36.9 (it's on a newer, unreleased-as-run
+   version — confirmed against the actual `2.36.9`-tagged source, not
+   `master`), so setting it gets silently dropped the next time the workflow
+   is opened and saved. Markdown content type with an inline link is what this
+   version's node actually supports. The tradeoff is real: the raw OS push
+   banner shows unrendered markdown syntax, and the link only becomes tappable
+   once the message is opened in a client that renders markdown (confirmed for
+   the web UI and the Android app).
 
 Two more nodes in the receiver render that report:
 
