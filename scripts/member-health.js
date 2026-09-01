@@ -249,13 +249,21 @@ export function hasVerificationToken(html, token) {
  * lightweight badge and text tiers intentionally have no member id, so their
  * canonical /go/random destination is the participation marker.
  *
+ * Three embed tiers count, not two. Besides the full `<indienode-widget>`, an
+ * `<iframe>` pointing at /embed-frame?site-id=<id> is a first-class tier and is
+ * the one webring-security-research-2026-08-31.md recommends as the *default*
+ * member integration, because a sandboxed cross-origin frame cannot reach the
+ * host page the way the script widget can. It carries a member id in its query
+ * string, so it is matched exactly like the widget rather than like the
+ * id-less link tiers.
+ *
  * This returns four states rather than a boolean because two of them are
  * different problems with different fixes. `unmatched-widget` means the member
- * *is* carrying an embed and only its `site-id` is wrong — the common cause
- * being the `your-ring-entry-id` placeholder that `/widget` hands out verbatim,
- * which `Widget.svelte` renders happily by falling back to a random index, so
- * the member has no way to notice. Reporting that as "no embed found" sends a
- * maintainer looking for something that is already on the page.
+ * *is* carrying an embed — widget or frame — and only its `site-id` is wrong,
+ * the common cause being the `your-ring-entry-id` placeholder that `/widget`
+ * hands out verbatim, which `Widget.svelte` renders happily by falling back to
+ * a random index, so the member has no way to notice. Reporting that as "no
+ * embed found" sends a maintainer looking for something already on the page.
  *
  * The `<a>` fallback cannot rescue an unmatched widget, incidentally: the full
  * widget builds its /go/random link at runtime, so it is never in the served
@@ -277,6 +285,28 @@ export function ringParticipation(html, memberIds = [], pageUrl = undefined) {
 	});
 	if (hasMemberWidget) return 'member';
 
+	const embedFrames = (html.match(/<iframe\b[^>]*>/gi) || [])
+		.map((tag) => tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1])
+		.flatMap((src) => {
+			if (!src) return [];
+			try {
+				return [new URL(src, pageUrl)];
+			} catch {
+				return [];
+			}
+		})
+		.filter(
+			(url) =>
+				(url.hostname === 'indienodes.us' || url.hostname === 'www.indienodes.us') &&
+				url.pathname.replace(/\/+$/, '') === '/embed-frame'
+		);
+	const hasMemberFrame = embedFrames.some((url) => {
+		const siteId = url.searchParams.get('site-id');
+		if (!siteId) return false;
+		return wanted.includes(siteId.trim().toLowerCase());
+	});
+	if (hasMemberFrame) return 'member';
+
 	const links = html.match(/<a\b[^>]*>/gi) || [];
 	const hasRingLink = links.some((tag) => {
 		const href = tag.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1];
@@ -293,7 +323,7 @@ export function ringParticipation(html, memberIds = [], pageUrl = undefined) {
 	});
 	if (hasRingLink) return 'link';
 
-	return widgetTags.length ? 'unmatched-widget' : 'none';
+	return widgetTags.length || embedFrames.length ? 'unmatched-widget' : 'none';
 }
 
 /** @param {ReadableStream<Uint8Array> | null} body @param {number} limit */
@@ -433,10 +463,10 @@ export async function probeLink(link, options = {}) {
 							statusCode: response.status,
 							finalUrl: checkedUrl.href,
 							detail:
-								'The page carries an <indienode-widget>, but its site-id matches no member. ' +
-								'Expected ' +
+								'The page carries a ring embed (widget or /embed-frame iframe), but its ' +
+								'site-id matches no member. Expected ' +
 								memberIds.map((id) => '"' + id + '"').join(' or ') +
-								'. The widget still renders, so the member cannot see this; the fix is one attribute.'
+								'. The embed still renders, so the member cannot see this; the fix is one attribute.'
 						});
 					}
 					if (participation === 'none' && truncated) {
