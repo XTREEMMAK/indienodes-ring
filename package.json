@@ -8,6 +8,7 @@
 	"scripts": {
 		"prepare": "node scripts/install-hooks.mjs || true",
 		"ring:build": "node scripts/build-ring.js",
+		"feed:build": "node scripts/build-feed.js",
 		"validate": "node scripts/validate-ring.js",
 		"validate:publish": "node scripts/validate-ring.js --publish",
 		"members:health": "node scripts/check-member-links.js",

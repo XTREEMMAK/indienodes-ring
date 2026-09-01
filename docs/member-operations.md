@@ -119,9 +119,16 @@ name="indienode-verification">` tag on the member's own page. It is public by de
   it proves nothing on its own, because every check reads it _from the page at the entry's
   stored `source_url`_, never from anything a caller supplies. Rewriting it here does not
   change what is on their site; it only makes the health check disagree with reality.
+- **`joined_at`** is machine-managed the same way: `npm run ring:build` stamps it once,
+  automatically, the first time a member file is built without one. Hand-editing it back-dates
+  or forward-dates that entry in [the "what's new" feed](./whats-new-feed.md) without changing
+  anything real about when it joined.
 
-Everything else — `creator`, `why`, `tags`, media URLs — is ordinary content, and the
-creator can change all of it themselves through `/update`.
+Everything else — `creator`, `why`, `tags`, media URLs, and `updated_at` — is ordinary
+content. The creator can change most of it themselves through `/update`; `updated_at`
+specifically is meant to be set deliberately (by `/update`, or by a maintainer editing by
+hand) whenever an edit is substantive enough to be worth noting, since nothing sets it
+automatically.
 
 ## Commands
 

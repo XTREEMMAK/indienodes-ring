@@ -68,11 +68,13 @@ schema/
 scripts/
   ring-files.js               Shared file-path and serialization logic
   build-ring.js               Builds ring.json from members/*.json
+  build-feed.js               Builds feed.xml, the "what's new" RSS feed
   validate-ring.js            Validates shape, filenames, and freshness
   member-health.js            Probes member links and ring participation
   check-member-links.js       Command-line wrapper for health checks
   n8n/backups/                Checked-in member-health workflow exports
 ring.json                     Generated artifact; do not hand-edit
+feed.xml                      Generated at publish time; never committed
 site/                         Static site for ring.indienodes.us
 ```
 
@@ -91,6 +93,7 @@ npm run validate
 | Command                    | Purpose                                                       |
 | -------------------------- | ------------------------------------------------------------- |
 | `npm run ring:build`       | Regenerate `ring.json` from `members/*.json`                  |
+| `npm run feed:build`       | Regenerate `feed.xml`, the "what's new" RSS feed              |
 | `npm run validate`         | Check schemas, filename/id agreement, and aggregate freshness |
 | `npm run validate:publish` | Run validation and reject placeholder entries                 |
 | `npm run members:health`   | Probe live URLs and continuing ring participation             |
@@ -148,6 +151,8 @@ pull requests rather than direct pushes to `main`.
   participation requires.
 - [Member link health](./docs/member-link-health.md) — what the health checker probes and
   how to interpret its warnings.
+- [The "what's new" feed](./docs/whats-new-feed.md) — how `feed.xml` and `joined_at` work,
+  and the backfill limitation for members that predate the field.
 - [Emergency member removal](./docs/emergency-member-removal.md) — the narrow removal path
   and its required configuration.
 - [Adding a Node type](./docs/adding-node-type.md) — coordinated schema, client, renderer,

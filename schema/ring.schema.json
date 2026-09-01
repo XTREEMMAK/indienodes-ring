@@ -17,7 +17,16 @@
 			"description": "An https URL to media hosted somewhere the creator controls, never on IndieNodes itself. The no-rehosting principle is the whole shape of this project, and encoding it here means `npm run validate:publish` enforces it on every entry rather than it living only as a sentence in the submission spec. `maxLength` is the same rough ceiling browsers and servers already treat as a practical URL length limit -- generous for any real URL, a bound against a pathological one. Whether the URL actually resolves somewhere safe (not a private IP, not localhost, no embedded credentials) is `validate-ring.js`'s job, not this schema's: that rule needs a private-IP-range table a JSON Schema pattern cannot cleanly express, and it already exists once, in `member-health.js`."
 		}
 	},
-	"required": ["id", "creator", "type", "why", "source_url", "tags", "verification_token"],
+	"required": [
+		"id",
+		"creator",
+		"type",
+		"why",
+		"source_url",
+		"tags",
+		"verification_token",
+		"joined_at"
+	],
 	"properties": {
 		"id": {
 			"type": "string",
@@ -218,6 +227,16 @@
 			"minLength": 1,
 			"maxLength": 200,
 			"description": "Opaque string confirming submitter control of source_url or a third-party profile page."
+		},
+		"joined_at": {
+			"type": "string",
+			"format": "date-time",
+			"description": "UTC timestamp this entry first appeared in members/. Set automatically by build-ring.js the first time a member file is built without one — never hand-edited, same spirit as verification_token being explicit rather than derived. audio-key-jay and comic-kjc-comix (present before this field existed) carry the date it was introduced, not their true historical join date; see docs/whats-new-feed.md."
+		},
+		"updated_at": {
+			"type": "string",
+			"format": "date-time",
+			"description": "UTC timestamp of the most recent substantive edit, set explicitly by whoever makes it (the /update flow, or a maintainer editing by hand) — not auto-derived, for the same reason ring.json itself carries no generated_at. Omitted means never updated since joining."
 		},
 		"_placeholder": {
 			"type": "boolean",

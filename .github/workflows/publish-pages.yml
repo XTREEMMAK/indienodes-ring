@@ -29,6 +29,8 @@ on:
       - 'ring.json'
       - 'schema/**'
       - 'site/**'
+      - 'scripts/build-feed.js'
+      - 'scripts/ring-files.js'
       - '.github/workflows/publish-pages.yml'
   workflow_dispatch:
 
@@ -50,11 +52,24 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+
+      # Plain npm ci, not --ignore-scripts like build-ring.yml uses: that
+      # flag defends against untrusted PR-branch content sitting alongside a
+      # pushable credential. This job only ever runs on already-merged main
+      # via push/workflow_dispatch, so that threat model doesn't apply here.
+      - run: npm ci
+      - run: npm run feed:build
+
       - name: Assemble the published site
         run: |
           mkdir -p _site/schema
           cp -R site/. _site/
           cp ring.json _site/ring.json
+          cp feed.xml _site/feed.xml
           cp schema/ring.schema.json _site/schema/ring-entry.json
           cp schema/ring-document.schema.json _site/schema/ring-document.json
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
