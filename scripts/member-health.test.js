@@ -412,6 +412,68 @@ describe('member health: ring participation detection', () => {
 		assert.equal(ringParticipation('<html><p>Nothing here.</p></html>', ['audio-example']), 'none');
 	});
 
+	it('recognizes the /embed-frame iframe tier, which the checker used to miss entirely', () => {
+		// Regression: comic-kjc-comix carried exactly this and was reported as
+		// ring_participation_missing, because only <a> hrefs were inspected for a
+		// ring destination and an <iframe src> is not an <a>. The frame is the
+		// tier webring-security-research-2026-08-31.md recommends by default, so
+		// penalizing it as absent was backwards.
+		assert.equal(
+			ringParticipation(
+				'<iframe src="https://indienodes.us/embed-frame?site-id=comic-kjc-comix"></iframe>',
+				['comic-kjc-comix']
+			),
+			'member'
+		);
+		assert.equal(
+			ringParticipation(
+				'<iframe src="https://www.indienodes.us/embed-frame/?site-id=Audio-Example&theme=dark"></iframe>',
+				['audio-example']
+			),
+			'member'
+		);
+		assert.equal(
+			ringParticipation(
+				'<iframe src="//indienodes.us/embed-frame?site-id=audio-example"></iframe>',
+				['audio-example'],
+				'https://creator.example/work'
+			),
+			'member'
+		);
+	});
+
+	it('treats a frame on the wrong host or with no site-id like any other unmatched embed', () => {
+		assert.equal(
+			ringParticipation(
+				'<iframe src="https://elsewhere.example/embed-frame?site-id=audio-example"></iframe>',
+				['audio-example']
+			),
+			'none'
+		);
+		assert.equal(
+			ringParticipation('<iframe src="https://indienodes.us/embed-frame"></iframe>', [
+				'audio-example'
+			]),
+			'unmatched-widget'
+		);
+		assert.equal(
+			ringParticipation(
+				'<iframe src="https://indienodes.us/embed-frame?site-id=someone-else"></iframe>',
+				['audio-example']
+			),
+			'unmatched-widget'
+		);
+		// A root-relative frame resolves to the member's own site, not the ring.
+		assert.equal(
+			ringParticipation(
+				'<iframe src="/embed-frame?site-id=audio-example"></iframe>',
+				['audio-example'],
+				'https://creator.example/work'
+			),
+			'none'
+		);
+	});
+
 	it('separates a wrong site-id from no embed at all', () => {
 		assert.equal(
 			ringParticipation('<indienode-widget site-id="someone-else"></indienode-widget>', [
