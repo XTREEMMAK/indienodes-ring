@@ -104,31 +104,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-GOTIFY-HOST/message",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { \"title\": \"IndieNodes: \" + $json.alerts.length + \" member link(s) broken\", \"message\": $json.alerts.map(a => a.url + \" — \" + a.reason + \" (streak \" + a.streak + \")\").join(\"\\n\"), \"priority\": 6 } }}",
-        "options": {}
+        "resource": "message",
+        "operation": "create",
+        "message": "={{ $json.alerts.map(a => a.url + \" — \" + a.reason + \" (streak \" + a.streak + \")\").join(\"\\n\") }}",
+        "additionalFields": {
+          "title": "={{ \"IndieNodes: \" + $json.alerts.length + \" member link(s) broken\" }}",
+          "priority": 6
+        }
       },
       "id": "abd998d6-cd37-4183-8daa-25e7b3101aca",
       "name": "Alert via Gotify",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.gotify",
+      "typeVersion": 1,
       "position": [1340, 220],
       "credentials": {
-        "httpHeaderAuth": {
+        "gotifyApi": {
           "id": "REPLACE_ME",
-          "name": "Gotify App Token"
+          "name": "Gotify API"
         }
       },
-      "notes": "Replace YOUR-GOTIFY-HOST with your Gotify server. Header credential: name 'X-Gotify-Key', value '<Gotify application token>'."
+      "notes": "Credential: Gotify API. Set 'URL' to your Gotify host and 'App API Token' to an application token from Gotify's Apps tab — the client token field can stay empty, it's only needed for delete/list operations this workflow doesn't use."
     }
   ],
   "connections": {
