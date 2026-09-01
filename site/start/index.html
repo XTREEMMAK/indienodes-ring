@@ -82,6 +82,9 @@
 				</div>
 				<div class="path-grid">
 					<article class="resource-card glass-panel">
+						<div class="resource-card__icon">
+							<span class="mmm-mark" aria-hidden="true">mmm.</span>
+						</div>
 						<span class="card-label">No code</span>
 						<h3>Arrange it visually</h3>
 						<p>
@@ -95,6 +98,9 @@
 						>
 					</article>
 					<article class="resource-card glass-panel">
+						<div class="resource-card__icon resource-card__icon--indienodes">
+							<img src="/images/IndieNodes_Logo.webp" alt="" width="42" height="42" />
+						</div>
 						<span class="card-label">Guided</span>
 						<h3>Generate a starter site</h3>
 						<p>
@@ -111,6 +117,12 @@
 						>
 					</article>
 					<article class="resource-card glass-panel">
+						<div class="resource-card__icon" aria-hidden="true">
+							<svg viewBox="0 0 48 48">
+								<circle cx="24" cy="24" r="18" />
+								<path d="M6 24h36M24 6c6 5 9 11 9 18s-3 13-9 18c-6-5-9-11-9-18s3-13 9-18Z" />
+							</svg>
+						</div>
 						<span class="card-label">Hands on</span>
 						<h3>Write HTML and CSS</h3>
 						<p>
@@ -141,9 +153,19 @@
 				<div class="hosting-grid">
 					<article class="host-card glass-panel">
 						<div class="host-card__top">
-							<div>
-								<span class="card-label">Easy first host</span>
-								<h3>Neocities</h3>
+							<div class="host-card__identity">
+								<img
+									class="service-icon"
+									src="https://neocities.org/img/favicon.png"
+									alt=""
+									width="48"
+									height="48"
+									loading="lazy"
+								/>
+								<div>
+									<span class="card-label">Easy first host</span>
+									<h3>Neocities</h3>
+								</div>
 							</div>
 							<span class="host-price">Free</span>
 						</div>
@@ -169,9 +191,19 @@
 
 					<article class="host-card glass-panel">
 						<div class="host-card__top">
-							<div>
-								<span class="card-label">Flexible files</span>
-								<h3>Nekoweb</h3>
+							<div class="host-card__identity">
+								<img
+									class="service-icon"
+									src="https://nekoweb.org/favicon.ico"
+									alt=""
+									width="48"
+									height="48"
+									loading="lazy"
+								/>
+								<div>
+									<span class="card-label">Flexible files</span>
+									<h3>Nekoweb</h3>
+								</div>
 							</div>
 							<span class="host-price">Free</span>
 						</div>
@@ -198,9 +230,19 @@
 
 					<article class="host-card glass-panel">
 						<div class="host-card__top">
-							<div>
-								<span class="card-label">Version controlled</span>
-								<h3>GitHub Pages</h3>
+							<div class="host-card__identity">
+								<img
+									class="service-icon service-icon--github"
+									src="https://github.githubassets.com/favicons/favicon.svg"
+									alt=""
+									width="48"
+									height="48"
+									loading="lazy"
+								/>
+								<div>
+									<span class="card-label">Version controlled</span>
+									<h3>GitHub Pages</h3>
+								</div>
 							</div>
 							<span class="host-price">Free</span>
 						</div>
@@ -227,7 +269,22 @@
 				</div>
 
 				<aside class="media-callout glass-panel">
-					<div class="media-callout__icon" aria-hidden="true">♪</div>
+					<div class="service-icon-stack" aria-hidden="true">
+						<img
+							src="https://archive.org/favicon.ico"
+							alt=""
+							width="42"
+							height="42"
+							loading="lazy"
+						/>
+						<img
+							src="https://filegarden.com/images/icon.svg"
+							alt=""
+							width="42"
+							height="42"
+							loading="lazy"
+						/>
+					</div>
 					<div>
 						<p class="section-kicker">For musicians</p>
 						<h3>Your page host and audio host can be different.</h3>
@@ -296,6 +353,14 @@
 			</section>
 
 			<section class="indie-web-panel glass-panel" aria-labelledby="indie-web-title">
+				<img
+					class="indie-web-panel__icon"
+					src="https://32bit.cafe/favicon.ico"
+					alt=""
+					width="64"
+					height="64"
+					loading="lazy"
+				/>
 				<div>
 					<p class="section-kicker">A wider web</p>
 					<h2 id="indie-web-title">This is part of the Indie Web.</h2>
@@ -316,24 +381,46 @@
 				>
 			</section>
 
-			<section class="hire-panel" aria-labelledby="hire-title">
-				<p class="section-kicker">Want a hand?</p>
-				<h2 id="hire-title">You can also hire me to design your website.</h2>
-				<p>
-					If you want a personal site built around your work and your taste, tell me what you have
-					in mind. I can help turn it into a focused, expressive home on the web.
-				</p>
-				<a
-					class="button button--primary"
-					href="https://j2it.us/contact"
-					target="_blank"
-					rel="noopener noreferrer"
-					>Contact me at j2it.us
-					<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" /></svg
-				></a>
+			<section class="hire-panel glass-panel" aria-labelledby="hire-title">
+				<div class="profile-orbit">
+					<span class="profile-orbit__ring" aria-hidden="true"></span>
+					<span class="profile-orbit__dot profile-orbit__dot--one" aria-hidden="true"></span>
+					<span class="profile-orbit__dot profile-orbit__dot--two" aria-hidden="true"></span>
+					<img
+						src="https://j2it.us/images/Jamaal_Photo.webp"
+						alt="Jamaal, web designer"
+						width="240"
+						height="240"
+						loading="lazy"
+						decoding="async"
+					/>
+				</div>
+				<div class="hire-panel__copy">
+					<p class="section-kicker">Want a hand?</p>
+					<h2 id="hire-title">You can also hire me to design your website.</h2>
+					<p>
+						If you want a personal site built around your work and your taste, tell me what you have
+						in mind. I can help turn it into a focused, expressive home on the web.
+					</p>
+					<a
+						class="button button--primary"
+						href="https://j2it.us/contact"
+						target="_blank"
+						rel="noopener noreferrer"
+						>Contact me at j2it.us
+						<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" /></svg
+					></a>
+				</div>
 			</section>
 
 			<section class="join-strip glass-panel" aria-labelledby="join-title">
+				<img
+					class="join-strip__icon"
+					src="/images/IndieNodes_Logo.webp"
+					alt=""
+					width="64"
+					height="64"
+				/>
 				<div>
 					<p class="section-kicker">When your page is ready</p>
 					<h2 id="join-title">Connect it to IndieNodes.</h2>
