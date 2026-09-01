@@ -186,8 +186,47 @@ go live):
 4. **Code node** — tracks the three-consecutive-`broken` streak per URL in
    `$getWorkflowStaticData('global')`, replacing `--state`. The streak history
    therefore lives in the receiver, which is the workflow that runs every time.
-5. **IF** + **Gotify** (the native n8n node, not a raw HTTP request) — alerts
-   once a URL's streak reaches 3.
+5. **IF** + **Code node** ("Track streaks") also stashes the alert detail under
+   a random token in `staticData.reports` and builds `reportUrl`, so the next
+   step's push can stay short.
+6. **Gotify** (the native n8n node, not a raw HTTP request) — a one-line push
+   ("N member link(s) crossed the failure threshold. Tap for the full
+   report."), with `reportUrl` set as the node's Click URL.
+
+Two more nodes in the receiver render that report:
+
+7. **Webhook** (GET) at `/webhook/indienodes-member-health-report?token=<token>`
+   — reads `staticData.reports[token]` and builds an HTML page styled to match
+   the rest of the IndieNodes admin surface (the CSS is ported from
+   `indienodes-app`'s `scripts/n8n/build_workflows.py`, the same `review_style`
+   block `Webring - Review Action v2` uses for its own approve/reject pages),
+   listing every alerted URL, its reason, streak, and member file. An unknown
+   or pruned token renders a plain "not found or expired" page in the same
+   style rather than an error. Unauthenticated by design — there's no login
+   system on this n8n instance for it to check against — gated only by the
+   token being an unguessable value that's never logged anywhere public.
+   Reports self-prune after 30 days.
+8. **Respond to Webhook**, `Content-Type: text/html`.
+
+### Testing the alert without a real failure
+
+Two more nodes exist purely for this and are meant to be temporary — delete
+`TEST trigger (delete when done testing)` and `TEST: seed near-threshold
+streak`, and the one connection they add into `Track streaks`, once you're
+done exercising the flow:
+
+```bash
+curl -X POST https://n8n.kjnet.us/webhook/indienodes-member-health-test-trigger
+```
+
+This seeds a fake URL's streak to 2 in the same static data `Track streaks`
+reads, then hands it a synthetic already-broken result for that URL — so the
+node's own `+ 1` is what crosses the real threshold of 3. Every step after
+that point (streak math, report storage, the Gotify push, the report page) is
+the genuine production code path; only the input is fake. This is
+deliberately not a shortcut that skips straight to "send an alert" — a
+shortcut like that would only prove Gotify credentials work, not that the
+feature works.
 
 ### Why two workflows instead of one Wait node
 

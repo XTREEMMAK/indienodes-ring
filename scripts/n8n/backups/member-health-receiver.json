@@ -18,25 +18,32 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nstaticData.streaks = staticData.streaks || {};\n\nconst alerts = [];\nfor (const r of (body.results || [])) {\n  const key = r.url;\n  const isBroken = r.outcome === 'broken';\n  const prev = staticData.streaks[key] || 0;\n  const streak = isBroken ? prev + 1 : 0;\n  staticData.streaks[key] = streak;\n  if (streak >= 3) {\n    alerts.push({ url: r.url, reason: r.reason, streak, references: r.references });\n  }\n}\n\nreturn [{ json: { alerts, summary: body.summary } }];"
+				"jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nstaticData.streaks = staticData.streaks || {};\nstaticData.reports = staticData.reports || {};\n\nconst alerts = [];\nfor (const r of (body.results || [])) {\n  const key = r.url;\n  const isBroken = r.outcome === 'broken';\n  const prev = staticData.streaks[key] || 0;\n  const streak = isBroken ? prev + 1 : 0;\n  staticData.streaks[key] = streak;\n  if (streak >= 3) {\n    alerts.push({ url: r.url, reason: r.reason, streak, references: r.references });\n  }\n}\n\nlet reportUrl = '';\nif (alerts.length) {\n  // Reports self-prune after 30 days so static data does not grow forever.\n  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;\n  for (const [token, report] of Object.entries(staticData.reports)) {\n    if (new Date(report.createdAt).getTime() < cutoff) delete staticData.reports[token];\n  }\n\n  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)\n    ? crypto.randomUUID()\n    : Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');\n  staticData.reports[token] = { alerts, summary: body.summary, createdAt: new Date().toISOString() };\n  reportUrl = 'https://n8n.kjnet.us/webhook/indienodes-member-health-report?token=' + token;\n}\n\nreturn [{ json: { alerts, summary: body.summary, reportUrl } }];\n"
 			},
 			"id": "33f0f5e3-9c85-441c-8cff-5757b0b241e1",
 			"name": "Track streaks",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
 			"position": [460, 300],
-			"notes": "Replaces check-member-links.js's --state file: 3 consecutive 'broken' results for the same URL crosses the alert threshold, any healthy/warning result resets it. State lives in this workflow's own static data, persisted by n8n across executions -- so the streak history belongs to this receiver workflow, not the dispatcher."
+			"notes": "Replaces check-member-links.js's --state file: 3 consecutive 'broken' results for the same URL crosses the alert threshold, any healthy/warning result resets it. State lives in this workflow's own static data. When the threshold is crossed, also stashes the alert detail under a random token in staticData.reports and builds reportUrl, so the Gotify push can stay short and link out to the full report instead of dumping every URL into the notification body."
 		},
 		{
 			"parameters": {
 				"conditions": {
-					"options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict"
+					},
 					"conditions": [
 						{
 							"id": "4c6c9f1a-2f7e-4e39-9c8a-6f7d6b6e9b1a",
 							"leftValue": "={{ $json.alerts.length }}",
 							"rightValue": 0,
-							"operator": { "type": "number", "operation": "gt" }
+							"operator": {
+								"type": "number",
+								"operation": "gt"
+							}
 						}
 					],
 					"combinator": "and"
@@ -53,10 +60,13 @@
 			"parameters": {
 				"resource": "message",
 				"operation": "create",
-				"message": "={{ $json.alerts.map(a => a.url + \" — \" + a.reason + \" (streak \" + a.streak + \")\").join(\"\\n\") }}",
+				"message": "={{ $json.alerts.length + \" member link(s) crossed the failure threshold. Tap for the full report.\" }}",
 				"additionalFields": {
 					"title": "={{ \"IndieNodes: \" + $json.alerts.length + \" member link(s) broken\" }}",
 					"priority": 6
+				},
+				"options": {
+					"clickUrl": "={{ $json.reportUrl }}"
 				}
 			},
 			"id": "abd998d6-cd37-4183-8daa-25e7b3101aca",
@@ -70,18 +80,159 @@
 					"name": "Gotify API"
 				}
 			},
-			"notes": "Credential: Gotify API. Set 'URL' to your Gotify host and 'App API Token' to an application token from Gotify's Apps tab — the client token field can stay empty, it's only needed for delete/list operations this workflow doesn't use."
+			"notes": "Credential: Gotify API. Set 'URL' to your Gotify host and 'App API Token' to an application token from Gotify's Apps tab. Message is deliberately short -- clickUrl (Options > Click URL) carries the tap-through to the styled report page 'Track streaks' just built, so the push notification itself stays a one-liner."
+		},
+		{
+			"parameters": {
+				"httpMethod": "GET",
+				"path": "indienodes-member-health-report",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"id": "d3a6b2f1-8c4e-4a2b-9f1d-6e5c7a8b9d0e",
+			"name": "Report webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"webhookId": "f4e3d2c1-7b6a-4958-8271-9a0b1c2d3e4f",
+			"position": [240, 460],
+			"notes": "Production URL: https://n8n.kjnet.us/webhook/indienodes-member-health-report?token=<token>. Unauthenticated by design -- there is no login system for this instance to check against -- gated only by the token being an unguessable value 'Track streaks' generates and never logs anywhere public. Reports self-prune after 30 days (see 'Track streaks')."
+		},
+		{
+			"parameters": {
+				"jsCode": "const query = $input.first().json.query || {};\nconst token = (query.token || '').toString();\nconst staticData = $getWorkflowStaticData('global');\nconst report = (staticData.reports || {})[token];\n\nconst esc = (v) => (v === undefined || v === null ? '' : v.toString())\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;').replace(/'/g, '&#39;');\n\n// Trimmed port of indienodes-app's scripts/n8n/build_workflows.py review_style\n// (the CSS Webring - Review Action v2 uses for its own status pages), so a\n// tapped Gotify alert looks like the rest of the IndieNodes admin surface\n// instead of a bare JSON dump.\nconst style = `\n:root{\n  color-scheme:light dark;\n  --bg:#f7f4ee;--bg-elevated:rgba(255,255,255,.82);--text:#221f1a;\n  --muted:#6b6558;--border:rgba(228,221,207,.9);\n  --accent:#b5502f;--accent-hover:#963f24;--danger:#bf3b45;--warning:#b7791f;\n  --shadow:0 24px 80px rgba(70,52,31,.16);\n  --audio:#3b82f6;--game:#22c55e;--comic:#a855f7;--text-type:#f59e0b;\n}\n*{box-sizing:border-box}\nhtml{min-height:100%;background:var(--bg)}\nbody{\n  min-height:100vh;margin:0;padding:clamp(1rem,3vw,2.5rem);\n  background:\n    radial-gradient(circle at 10% 4%,rgba(181,80,47,.18),transparent 28rem),\n    radial-gradient(circle at 92% 12%,rgba(45,90,130,.15),transparent 30rem),\n    var(--bg);\n  color:var(--text);font-family:Karla,Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;\n  font-size:16px;line-height:1.55;\n}\na{color:var(--accent);text-underline-offset:.18em}\na:hover{color:var(--accent-hover)}\n.shell{position:relative;width:min(760px,100%);margin:0 auto;padding-top:clamp(1rem,7vh,4rem)}\n.brand{display:inline-flex;align-items:center;gap:.75rem;margin:0 0 1rem;color:var(--text);text-decoration:none}\n.brand-mark{display:grid;grid-template-columns:repeat(2,8px);gap:4px;transform:rotate(45deg)}\n.brand-mark i{display:block;width:8px;height:8px;border-radius:3px}\n.brand-mark i:nth-child(1){background:var(--audio)}\n.brand-mark i:nth-child(2){background:var(--game)}\n.brand-mark i:nth-child(3){background:var(--comic)}\n.brand-mark i:nth-child(4){background:var(--text-type)}\n.brand-copy{display:flex;flex-direction:column;line-height:1.1}\n.brand-copy strong{font-family:\"Space Grotesk\",Inter,ui-sans-serif,system-ui,sans-serif;font-size:1.05rem}\n.brand-copy small{margin-top:.2rem;color:var(--muted);font-size:.72rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase}\n.panel{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:24px;background:var(--bg-elevated);box-shadow:var(--shadow);backdrop-filter:blur(22px)}\n.panel::before{content:\"\";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,var(--audio),var(--game),var(--comic),var(--text-type))}\n.status-panel{padding:clamp(1.5rem,5vw,2.5rem)}\n.status-panel h1{margin:0;font-family:\"Space Grotesk\",Inter,ui-sans-serif,system-ui,sans-serif;font-size:clamp(1.6rem,4vw,2.25rem);letter-spacing:-.03em}\n.status-panel p:not(.eyebrow){margin:.7rem 0 0;color:var(--muted)}\n.eyebrow{margin:0 0 .55rem;color:var(--muted);font-size:.73rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}\n.status-icon{display:grid;width:3rem;height:3rem;margin-bottom:1rem;place-items:center;border-radius:50%;background:rgba(107,101,88,.1);color:var(--muted);font-size:1.45rem;font-weight:900}\n.status-panel.danger .status-icon{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}\n.status-panel.warning .status-icon{background:color-mix(in srgb,var(--warning) 16%,transparent);color:var(--warning)}\n.section{padding:clamp(1.25rem,3.5vw,2rem);border-top:1px solid var(--border)}\n.section-label{margin:0 0 .55rem;color:var(--muted);font-size:.73rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}\n.details{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--border);border-radius:14px}\n.details th,.details td{padding:.7rem .85rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top;font-size:.88rem}\n.details tr:last-child th,.details tr:last-child td{border-bottom:0}\n.details th{width:22%;color:var(--muted);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.24)}\n.details td{overflow-wrap:anywhere;font-weight:600}\n.meta{margin:1rem 0 0;color:var(--muted);font-size:.8rem}\n`;\n\nconst brand = '<a class=\"brand\" href=\"https://indienodes.us/\" target=\"_blank\" rel=\"noopener\">' +\n  '<span class=\"brand-mark\" aria-hidden=\"true\"><i></i><i></i><i></i><i></i></span>' +\n  '<span class=\"brand-copy\"><strong>IndieNodes</strong><small>Link health report</small></span></a>';\n\nfunction page(tone, iconChar, title, inner) {\n  return '<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">' +\n    '<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">' +\n    '<meta name=\"color-scheme\" content=\"light dark\"><title>IndieNodes link health</title>' +\n    '<style>' + style + '</style></head><body><main class=\"shell\">' + brand +\n    '<article class=\"panel status-panel ' + tone + '\">' +\n    '<div class=\"status-icon\" aria-hidden=\"true\">' + iconChar + '</div>' +\n    '<p class=\"eyebrow\">Link health</p><h1>' + esc(title) + '</h1>' + inner +\n    '</article></main></body></html>';\n}\n\nif (!report) {\n  const body = page('warning', '!', 'Report not found or expired',\n    '<p>This report link is invalid, or its report has already been pruned (reports are kept 30 days).</p>');\n  return [{ json: { html: body } }];\n}\n\nconst s = report.summary || {};\nconst rows = report.alerts.map((a) => {\n  const refs = (a.references || []).map((r) => esc(r.memberFile) + ':' + esc(r.field)).join(', ');\n  return '<tr><td>' + esc(a.url) + '</td><td>' + esc(a.reason) + '</td><td>' + esc(a.streak) +\n    '</td><td>' + refs + '</td></tr>';\n});\n\nconst summaryLine = [s.membersChecked, 'member(s) checked,', s.urlsChecked, 'URL(s):',\n  s.healthy, 'healthy,', s.broken, 'broken,', s.warnings, 'warning(s).'].join(' ');\n\nconst inner =\n  '<p>' + esc(summaryLine) + '</p>' +\n  '<div class=\"section\"><p class=\"section-label\">Crossed the alert threshold</p>' +\n  '<table class=\"details\"><thead><tr><th>URL</th><th>Reason</th><th>Streak</th><th>Member</th></tr></thead>' +\n  '<tbody>' + rows.join('') + '</tbody></table></div>' +\n  '<p class=\"meta\">Generated ' + esc(report.createdAt) + '. This link expires after 30 days.</p>';\n\nconst body = page('danger', '!', report.alerts.length + ' link(s) crossed the failure threshold', inner);\nreturn [{ json: { html: body } }];\n"
+			},
+			"id": "9b8c7d6e-5f4a-4b3c-8d2e-1f0a9b8c7d6e",
+			"name": "Build report page",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [460, 460],
+			"notes": "Styling ported from indienodes-app's scripts/n8n/build_workflows.py (the review_style CSS and html() page-shell helper Webring - Review Action v2 uses for its own approve/reject status pages), trimmed to what this page needs."
+		},
+		{
+			"parameters": {
+				"respondWith": "text",
+				"responseBody": "={{ $json.html }}",
+				"options": {
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "Content-Type",
+								"value": "text/html; charset=utf-8"
+							}
+						]
+					}
+				}
+			},
+			"id": "2c1b0a9d-8e7f-4d6c-9b5a-3f2e1d0c9b8a",
+			"name": "Respond with report",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [680, 460]
+		},
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "indienodes-member-health-test-trigger",
+				"responseMode": "onReceived",
+				"options": {}
+			},
+			"id": "6a5b4c3d-2e1f-4a0b-9c8d-7e6f5a4b3c2d",
+			"name": "TEST trigger (delete when done testing)",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"webhookId": "1e2d3c4b-5a69-4788-9f0e-1d2c3b4a5968",
+			"position": [240, 620],
+			"notes": "Manual fault-injection path for testing the alert + report page end to end without waiting on a real 404 or three real weekly cycles. curl -X POST https://n8n.kjnet.us/webhook/indienodes-member-health-test-trigger (no body needed). Feeds a synthetic already-at-streak-2 result into the SAME 'Track streaks' node the real webhook uses, so streak math, report generation, and the Gotify alert are all the real code path -- only the input is fake. DELETE this node and 'TEST: seed near-threshold streak' (and the one connection they add into Track streaks) once you're done testing; nothing else depends on them."
+		},
+		{
+			"parameters": {
+				"jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.streaks = staticData.streaks || {};\nconst testUrl = 'https://example.invalid/simulated-fault';\n// One below the real threshold (3) -- the shared 'Track streaks' node's own\n// +1 is what crosses it, so this exercises the real alert/report/Gotify path\n// end to end rather than bypassing it.\nstaticData.streaks[testUrl] = 2;\n\nreturn [{ json: { body: {\n  results: [{\n    url: testUrl,\n    outcome: 'broken',\n    reason: 'simulated_test_fault',\n    references: [{ memberFile: 'TEST-simulated.json', field: 'source_url' }]\n  }],\n  summary: { membersChecked: 0, urlsChecked: 1, healthy: 0, broken: 1, warnings: 0 }\n} } }];\n"
+			},
+			"id": "4f3e2d1c-0b9a-4887-8f6e-5d4c3b2a1908",
+			"name": "TEST: seed near-threshold streak",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [460, 620]
 		}
 	],
 	"connections": {
 		"Receive health.json": {
-			"main": [[{ "node": "Track streaks", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Track streaks",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Track streaks": {
-			"main": [[{ "node": "Any over threshold?", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Any over threshold?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Any over threshold?": {
-			"main": [[{ "node": "Alert via Gotify", "type": "main", "index": 0 }], []]
+			"main": [
+				[
+					{
+						"node": "Alert via Gotify",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Report webhook": {
+			"main": [
+				[
+					{
+						"node": "Build report page",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Build report page": {
+			"main": [
+				[
+					{
+						"node": "Respond with report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"TEST trigger (delete when done testing)": {
+			"main": [
+				[
+					{
+						"node": "TEST: seed near-threshold streak",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"TEST: seed near-threshold streak": {
+			"main": [
+				[
+					{
+						"node": "Track streaks",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"pinData": {},
