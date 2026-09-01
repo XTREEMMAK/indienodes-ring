@@ -42,6 +42,38 @@ npm run validate:publish # the above, and refuses placeholder entries
 npm run members:health   # probe live URLs and continuing ring participation
 ```
 
+## Making a change
+
+`main` requires a pull request — a direct `git push` to it is rejected by a
+repository rule, not just discouraged. This applies to every change,
+including the maintainer's own; there is no bypass. Merging also requires
+the `validate` check (`ci.yml`) to pass first, so a `members/`/`ring.json`
+mismatch can't land on `main` at all, only get stuck on a branch until fixed.
+
+```bash
+git checkout -b fix-whatever
+# ... edit, then:
+git add -A
+git commit -m "..."
+git push -u origin fix-whatever   # pushing a branch is fine; only main is protected
+
+gh pr create --fill               # opens the PR from the commit message
+gh pr merge --auto --squash       # queues the merge; completes once `validate` passes
+```
+
+`--auto` is the part worth knowing: it doesn't merge immediately, it tells
+GitHub to merge the moment the required check succeeds, so there's no need
+to sit refreshing the PR page or come back and click merge separately. If
+`validate` fails, the PR just sits unmerged — fix it on the same branch,
+push again (`gh pr merge --auto` only needs to be run once; it stays queued
+across new pushes) or run `gh pr merge --auto --squash` again if it already
+returned.
+
+Nothing about this changes `emergency-remove-member.yml` or `build-ring.yml`
+— both already worked by opening a PR against a branch, never by pushing to
+`main` directly, so this rule formalizes what they already did rather than
+requiring anything new of them.
+
 ## Documentation
 
 - [`docs/member-operations.md`](docs/member-operations.md) — where each kind

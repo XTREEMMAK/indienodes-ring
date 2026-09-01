@@ -27,9 +27,9 @@ workflow.
    one moment to double-check the member id before anything is committed.
 4. Once approved, the job removes `members/<id>.json`, regenerates
    `ring.json`, runs the publish validator, and opens a PR titled
-   `Emergency removal: <member_id>`. Wait for its `validate` check to pass,
-   then review and merge it — same as any other PR here, nothing about this
-   path skips that step.
+   `Emergency removal: <member_id>`. Review it and merge once `validate`
+   passes — GitHub won't offer the merge button until it does, same as any
+   other PR against this repository.
 5. Confirm the new image was actually published and the live deployment
    pulled it. **Merging this PR only updates the source ring — it does not
    itself redeploy anything.** See `indienodes-app`'s own deploy process for
@@ -77,14 +77,14 @@ GitHub already limits manual workflow dispatch to users with repository write
 access. The protected Environment supplies the additional approval gate; the
 typed `REMOVE <member-id>` confirmation prevents an accidental click-through.
 
-**Decided against: branch protection on `main`.** This workflow's "opens a
-PR, never pushes to `main` directly" behavior is guaranteed by its own script
-(`git switch -c ...` + `gh pr create`), not by a repository rule — so a
-ruleset would add nothing to _this_ workflow specifically except a hard
-"merge is blocked until `validate` passes" gate. For a single-maintainer
-repository where every other push to `main` is also the maintainer's own,
-requiring pull requests broadly was judged not worth the friction it would
-add to unrelated day-to-day pushes. The trade-off this accepts: whether the
-`validate` check has actually passed before merging the removal PR is a
-one-glance manual habit (see step 4 above), not something GitHub enforces.
-Revisit if a second maintainer or reviewer is ever added.
+**`main` is protected as of 2026-08-31**, superseding an earlier draft of
+this document that recorded the opposite decision. Every change — this
+workflow's PR included — now requires merging through a pull request, and
+`ci.yml`'s `validate` check must pass before that merge is allowed. This
+workflow's own "opens a PR, never pushes to `main` directly" behavior was
+already true by construction (`git switch -c ...` + `gh pr create`, not a
+direct push), so the rule doesn't change how the workflow itself behaves —
+what it adds is that step 4's "wait for `validate` to pass" is now something
+GitHub actually enforces, not a habit to remember. See the root
+[`README.md`](../README.md#making-a-change) for the general `git`/`gh` flow
+this implies for everything else in this repository.
