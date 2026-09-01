@@ -140,58 +140,37 @@ Two exist, answering different questions:
   between runs and the three-strike threshold cannot apply: it reports every
   result to the job summary and fails only on a definite 404/410.
 
-Semaphore remains the better home for the stateful run, because the threshold
-below needs a state file that survives between jobs.
+Something else needs to hold the stateful run's three-strike threshold across
+jobs, since `member-health-scheduled.yml`'s own runner can't. Semaphore was
+tried first and abandoned: its Bash tasks run in a non-login shell that never
+sources the profile a version-manager Node (nvm/asdf/volta) needs to reach
+`PATH`, and on the runner actually in use Node wasn't installed at all —
+fixable only by customizing Semaphore's own image/host, which its operator
+didn't want to take on as ongoing maintenance.
 
-## Semaphore schedule
+## External scheduler (n8n)
 
-Run the command weekly. The state path must be outside Semaphore's disposable
-checkout so the three-run threshold survives between jobs:
+`member-health-scheduled.yml`'s `workflow_dispatch` takes an optional
+`resume_url` input (default `''`, so the weekly cron and a plain manual
+dispatch are unaffected). When set, a final step POSTs `health.json` to it.
+This lets an external scheduler hold state without this repository needing to
+know what that scheduler is.
 
-```bash
-npm run members:health -- \
-  --state /var/lib/indienodes/member-health-state.json \
-  --json
-```
+The n8n workflow that uses this is checked in at
+`scripts/n8n/backups/member-health.json` (import it into n8n; credentials are
+stripped on export and must be re-selected after import). Node chain:
 
-The Semaphore task should fail on a non-zero exit code and send its normal
-maintainer notification. Ensure the task user can create the state file's
-parent directory.
-
-**The runner needs Node on `PATH`.** Semaphore runs tasks in a non-login shell,
-which does not source the profile that puts a version-manager Node (nvm, asdf,
-volta) on the path — the task fails with `npm: command not found` and exit 127
-before any check runs. Either install Node system-wide on the runner, or have
-the playbook resolve the absolute path to `npm` rather than relying on the
-inherited environment. This is a host requirement, not something this repository
-can satisfy.
-
-If Semaphore requires an Ansible playbook, keep it as a thin runner rather than
-duplicating the checker in YAML:
-
-```yaml
-- name: Locate npm on the runner
-  ansible.builtin.command: which npm
-  register: npm_bin
-  changed_when: false
-
-- name: Check IndieNodes member links
-  ansible.builtin.command:
-    argv:
-      - '{{ npm_bin.stdout }}'
-      - run
-      - members:health
-      - --
-      - --state
-      - /var/lib/indienodes/member-health-state.json
-      - --json
-  args:
-    chdir: /path/to/indienodes_v2
-  changed_when: false
-```
-
-A bare `npm` here is what produces the exit-127 failure above; resolving it
-first keeps the playbook working whether Node is system-wide or managed.
+1. **Schedule Trigger** — weekly, ahead of the `0 7 * * 1` fallback cron above
+   so that cron stays a true fallback rather than a race.
+2. **HTTP Request** — dispatches this workflow via the GitHub API, passing
+   n8n's own `{{ $execution.resumeUrl }}` as `resume_url`. Auth is a
+   fine-grained PAT (Actions: read/write, scoped to this repo only) stored in
+   n8n's own credential store — not a repository or Actions secret.
+3. **Wait node** — resumes on the webhook call this workflow's last step
+   makes, ~20 minute timeout.
+4. **Code node** — tracks the three-consecutive-`broken` streak per URL in
+   `$getWorkflowStaticData('global')`, replacing `--state`.
+5. **IF** + **HTTP Request (Gotify)** — alerts once a URL's streak reaches 3.
 
 The existing /update flow is how a creator replaces a dead resource after a
 maintainer confirms the report.

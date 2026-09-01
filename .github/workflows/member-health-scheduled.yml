@@ -25,6 +25,10 @@ on:
         description: Also confirm each source page still carries its verification meta tag
         type: boolean
         default: false
+      resume_url:
+        description: Resume URL to POST health.json to (set by automation, not manual runs)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -95,3 +99,15 @@ jobs:
             }
             console.log("No definitely dead URLs. Warnings, if any, are in the summary.");
           '
+
+      # Lets an external scheduler (e.g. n8n) hold the state file across runs
+      # that this disposable runner can't -- see docs/member-link-health.md,
+      # "Semaphore schedule". Silent no-op on the weekly cron and on a plain
+      # manual dispatch, since resume_url defaults to empty either way.
+      - name: Report to resume_url
+        if: always() && inputs.resume_url != ''
+        run: |
+          if [[ -s health.json ]]; then
+            curl -sS -X POST -H "Content-Type: application/json" \
+              --data @health.json "${{ inputs.resume_url }}"
+          fi
