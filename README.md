@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="site/images/IndieNodes_Logo.webp" alt="IndieNodes logo" width="220" />
+</p>
+
 # indienodes-ring
 
 The canonical IndieNodes ring: member records, the schemas that define what a
@@ -23,6 +27,7 @@ scripts/
   validate-ring.js      shape + freshness validation
   member-health.js       link-health probing
   check-member-links.js  CLI wrapper around member-health.js
+  n8n/backups/           checked-in n8n workflow exports (see member-link-health.md)
 ring.json              generated artifact — do not hand-edit
 site/                  static landing page for ring.indienodes.us
 ```
@@ -86,6 +91,8 @@ requiring anything new of them.
   the narrow removal path and its required configuration
 - [`docs/adding-node-type.md`](docs/adding-node-type.md): coordinated schema,
   client, renderer, submission, and rollout work for a new node type
+- [`docs/webring-security-research-2026-08-31.md`](docs/webring-security-research-2026-08-31.md) —
+  the security review this repo and the widget's threat model are audited against
 
 ## How a member actually joins
 
