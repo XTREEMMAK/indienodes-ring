@@ -34,37 +34,33 @@ sometimes right and is never the same thing.
 | Pull request, same repo       | Yes, by `build-ring.yml`                   | Yes, by `validate-ring.yml`            | No                                                     |
 | Pull request, from a fork     | **No** — run `npm run ring:build` yourself | Yes, and it fails on a stale aggregate | No                                                     |
 | `emergency-remove-member.yml` | Yes                                        | Yes, on the PR it opens                | Not applicable                                         |
-| Direct push to `main`         | **No** — run `npm run ring:build` yourself | Yes, by `ci.yml`                       | No                                                     |
 
-Nothing rebuilds `ring.json` for a direct push — `build-ring.yml` is `pull_request`-only
-— so **you must run `npm run ring:build` yourself and commit the result in the same
-commit**. What does cover you is `ci.yml`, which runs `validate:publish` on every push to
-`main`. A mismatch between `members/` and `ring.json` therefore fails CI on `main` itself,
-not just on the pull request that introduced it — visible in this repository's own Actions
-tab, and blocking a merge in any downstream repository (`indienodes-app`, once its cutover
-to consuming this repo is complete) whose branch protection requires this check to pass.
+`main` is protected by a repository rule as of 2026-08-31: every change goes through a
+pull request, and merging requires `ci.yml`'s `validate` check to pass first. There is no
+direct-push path anymore, admin included — see the root
+[`README.md`](../README.md#making-a-change) for the `git`/`gh` commands. Because `validate`
+is now required to merge, a `members/`/`ring.json` mismatch blocks the merge outright
+rather than landing on `main` and failing after the fact.
 
-That makes a direct push a legitimate admin path rather than a footgun, which is what it
-is for — see [Adding a member by hand](#adding-a-member-by-hand) below. A pull request is
-still better when you have no reason to skip one, because `build-ring.yml` does the
-rebuild for you and a review happens before `main` rather than after.
-
-A fork's pull request is skipped by `build-ring.yml` deliberately — it cannot be handed
-the credential that pushes back to a branch. That is why the fork row says to rebuild by
-hand, and why `validate-ring.yml` failing on a stale aggregate is the safety net rather
-than an inconvenience.
+Nothing rebuilds `ring.json` for a same-repo pull request that only edits `members/` by
+hand — `build-ring.yml` does that for you automatically. A fork's pull request is skipped
+by `build-ring.yml` deliberately, since it cannot be handed the credential that pushes
+back to a branch it does not own — **so a fork contributor must run `npm run ring:build`
+themselves and commit the result in the same commit**, which is why that row says so and
+why `validate-ring.yml` failing on a stale aggregate is the safety net rather than an
+inconvenience.
 
 ## What breaks when it goes wrong
 
-| Mistake                                             | What happens                                                              | How you find out                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Edited `members/` without rebuilding                | `ring.json` still serves the old entry                                    | `npm run validate` — "ring.json is out of date with members/\*.json" |
-| Edited `ring.json` by hand                          | Next rebuild silently reverts it                                          | Same check, same message                                             |
-| Deleted a member file, no rebuild                   | They stay in the ring, still linked                                       | Same check                                                           |
-| Pushed either straight to `main` without rebuilding | CI fails on `main`                                                        | `ci.yml`, after the push                                             |
-| Changed an existing `id`                            | Their widget's `site-id` matches nothing, and `/update?node=` links break | `members:health` reports `ring_widget_site_id_unmatched`             |
-| Invented a `verification_token`                     | Their page does not carry it                                              | `members:health --check-tokens` warns until they place it            |
-| Added a member by pull request                      | Nobody proved they own the site                                           | Never, automatically — that is the trade                             |
+| Mistake                              | What happens                                                              | How you find out                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Edited `members/` without rebuilding | `ring.json` still serves the old entry                                    | `npm run validate` — "ring.json is out of date with members/\*.json" |
+| Edited `ring.json` by hand           | Next rebuild silently reverts it                                          | Same check, same message                                             |
+| Deleted a member file, no rebuild    | They stay in the ring, still linked                                       | Same check                                                           |
+| Opened a PR without rebuilding       | The PR can't merge — `main` is protected and requires `validate` to pass  | The PR's own checks, before it ever reaches `main`                   |
+| Changed an existing `id`             | Their widget's `site-id` matches nothing, and `/update?node=` links break | `members:health` reports `ring_widget_site_id_unmatched`             |
+| Invented a `verification_token`      | Their page does not carry it                                              | `members:health --check-tokens` warns until they place it            |
+| Added a member by pull request       | Nobody proved they own the site                                           | Never, automatically — that is the trade                             |
 
 ## Adding a member by hand
 
@@ -100,8 +96,11 @@ The order that works:
 4. Run the health command above **before committing anything**. A warning here is the
    check doing its job.
 5. `npm run ring:build`, then `npm run validate:publish`.
-6. Commit the member file and `ring.json` together, then push. If you forget the rebuild,
-   the `pre-push` hook stops you before the push rather than CI stopping you after it.
+6. Commit the member file and `ring.json` together, on a branch — `main` no longer takes a
+   direct push, admin included. Push the branch, `gh pr create --fill`, then
+   `gh pr merge --auto --squash` (see the root [`README.md`](../README.md#making-a-change)).
+   If you forget the rebuild, the `pre-push` hook stops you before the branch push, and
+   `validate` blocks the merge either way if it somehow got past that.
 
 Step 4 is the one that matters. Everything else fails loudly on its own; that one fails
 silently, months later, as a member whose site never linked onward — and by then the
