@@ -25,31 +25,6 @@
 			"thumb_position": { "x": 50, "y": 50 },
 			"source_url": "https://keyjay.neocities.org",
 			"verification_token": "b44d66453a90b0b287a95edb2bece2cc"
-		},
-		{
-			"id": "comic-kjx",
-			"creator": "KJX",
-			"type": "comic",
-			"why": "Anime and Manga Indie Comics",
-			"tags": ["anime", "manga", "shounen", "slice of life"],
-			"pages": [
-				{
-					"image_url": "https://dragonx3000.nekoweb.org/assets/page-1.webp",
-					"caption": "FLUR: Blades of the Universe BK - 01"
-				},
-				{
-					"image_url": "https://dragonx3000.nekoweb.org/assets/page-2.webp",
-					"caption": "Lida and her Brother"
-				},
-				{
-					"image_url": "https://dragonx3000.nekoweb.org/assets/page-3.webp",
-					"caption": "FLUR Cover"
-				}
-			],
-			"thumb_url": "https://dragonx3000.nekoweb.org/assets/icon.webp",
-			"thumb_position": { "x": 50, "y": 50 },
-			"source_url": "https://dragonx3000.nekoweb.org/",
-			"verification_token": "b24b48ba3e7f3d9a933b9c8a16c36a04"
 		}
 	]
 }
