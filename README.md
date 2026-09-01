@@ -2,112 +2,166 @@
   <img src="site/images/IndieNodes_Logo.webp" alt="IndieNodes logo" width="220" />
 </p>
 
-# indienodes-ring
+<h1 align="center">IndieNodes Ring</h1>
 
-The canonical IndieNodes ring: member records, the schemas that define what a
-valid entry and a valid ring document look like, and the tooling that builds
-and validates `ring.json` from them.
+<p align="center">
+  The canonical member data, schemas, and publishing tools for the IndieNodes webring.
+</p>
 
-**A Node describes a creator. A client decides how that description is
-experienced.** This repository owns the description. [indienodes-app][app] is
-the official web/mobile/desktop client that reads it; other clients can too.
+<p align="center">
+  <a href="https://ring.indienodes.us">Visit the ring</a> ·
+  <a href="#run-it-locally">Run locally</a> ·
+  <a href="#member-operations">Member operations</a> ·
+  <a href="#documentation">Documentation</a>
+</p>
 
-[app]: https://github.com/XTREEMMAK/indienodes-app
+## Overview
 
-## Layout
+This repository owns the canonical IndieNodes ring: one record per creator, the schemas
+that define valid entries and ring documents, and the tooling that builds and validates
+[`ring.json`](./ring.json).
 
+**A Node describes a creator. A client decides how that description is experienced.**
+This repository owns the description. [`indienodes-app`](https://github.com/XTREEMMAK/indienodes-app)
+is the official web, mobile, and desktop client that reads it, but the data is available
+to other clients too.
+
+The ring is deliberately separate from any one interface. Member data can be reviewed,
+versioned, and published on its own schedule without requiring the app or another client
+to be rebuilt.
+
+## How it works
+
+Each file in `members/` is a canonical member record. The build script combines those
+records into a versioned document and the validation scripts ensure the source files and
+generated artifact stay in sync.
+
+```text
+members/*.json ──> build-ring.js ──> ring.json ──> ring.indienodes.us
+                         │                │
+                         └──── schemas ───┘
+                                          │
+                    ┌─────────────────────┼─────────────────────┐
+                    ▼                     ▼                     ▼
+              indienodes-app        member widget          other clients
 ```
-members/*.json        canonical source, one file per member
-schema/
-  ring.schema.json           what a single entry must look like
-  ring-document.schema.json  what ring.json itself must look like
-scripts/
-  ring-files.js        shared file-path and serialization logic
-  build-ring.js         members/*.json -> ring.json
-  validate-ring.js      shape + freshness validation
-  member-health.js       link-health probing
-  check-member-links.js  CLI wrapper around member-health.js
-  n8n/backups/           checked-in n8n workflow exports (see member-link-health.md)
-ring.json              generated artifact — do not hand-edit
-site/                  static landing page for ring.indienodes.us
-```
 
-`ring.json` is a versioned envelope, not a bare array:
+`ring.json` is a generated, versioned envelope rather than a bare array:
 
 ```json
-{ "version": "1.0", "entries": [ ... ] }
+{
+	"version": "1.0",
+	"entries": []
+}
 ```
 
-## Commands
+Do not edit it by hand. Change the corresponding file in `members/`, then rebuild the
+aggregate.
+
+## Repository layout
+
+```text
+members/*.json                Canonical source; one file per member
+schema/
+  ring.schema.json            Schema for a single entry
+  ring-document.schema.json   Schema for the generated ring document
+scripts/
+  ring-files.js               Shared file-path and serialization logic
+  build-ring.js               Builds ring.json from members/*.json
+  validate-ring.js            Validates shape, filenames, and freshness
+  member-health.js            Probes member links and ring participation
+  check-member-links.js       Command-line wrapper for health checks
+  n8n/backups/                Checked-in member-health workflow exports
+ring.json                     Generated artifact; do not hand-edit
+site/                         Static site for ring.indienodes.us
+```
+
+## Run it locally
+
+You need Node.js and npm. Install the development dependencies, then validate the
+committed ring:
 
 ```bash
-npm run ring:build       # regenerate ring.json from members/*.json
-npm run validate         # shape, filename/id agreement, and aggregate freshness
-npm run validate:publish # the above, and refuses placeholder entries
-npm run members:health   # probe live URLs and continuing ring participation
+npm install
+npm run validate
 ```
 
-## Making a change
+### Common commands
 
-`main` requires a pull request — a direct `git push` to it is rejected by a
-repository rule, not just discouraged. This applies to every change,
-including the maintainer's own; there is no bypass. Merging also requires
-the `validate` check (`ci.yml`) to pass first, so a `members/`/`ring.json`
-mismatch can't land on `main` at all, only get stuck on a branch until fixed.
+| Command                    | Purpose                                                       |
+| -------------------------- | ------------------------------------------------------------- |
+| `npm run ring:build`       | Regenerate `ring.json` from `members/*.json`                  |
+| `npm run validate`         | Check schemas, filename/id agreement, and aggregate freshness |
+| `npm run validate:publish` | Run validation and reject placeholder entries                 |
+| `npm run members:health`   | Probe live URLs and continuing ring participation             |
+| `npm test`                 | Run the automated tests                                       |
+
+## Member operations
+
+The `/join` and `/update` flows live in
+[`indienodes-app`](https://github.com/XTREEMMAK/indienodes-app). They prove that a creator
+controls the site their entry points to, then use the app's automation to open a pull
+request against this repository.
+
+Direct contributions to `members/*.json` are also supported. A hand-written pull request
+does not prove site ownership in the way `/join` does, so reviewers must account for that
+tradeoff. The [member operations guide](./docs/member-operations.md) explains where each
+kind of change belongs, how the safeguards work, and how to add a member by hand.
+
+For a member-data change, rebuild and validate before opening a pull request:
+
+```bash
+npm run ring:build
+npm run validate:publish
+```
+
+Commit the member file and the regenerated `ring.json` together.
+
+## Contributing
+
+`main` is protected. Every change, including maintainer changes, must arrive through a
+pull request and pass the required `validate` check before it can merge.
 
 ```bash
 git checkout -b fix-whatever
-# ... edit, then:
+# Make the change, then:
 git add -A
-git commit -m "..."
-git push -u origin fix-whatever   # pushing a branch is fine; only main is protected
+git commit -m "Describe the change"
+git push -u origin fix-whatever
 
-gh pr create --fill               # opens the PR from the commit message
-gh pr merge --auto --squash       # queues the merge; completes once `validate` passes
+gh pr create --fill
+gh pr merge --auto --squash
 ```
 
-`--auto` is the part worth knowing: it doesn't merge immediately, it tells
-GitHub to merge the moment the required check succeeds, so there's no need
-to sit refreshing the PR page or come back and click merge separately. If
-`validate` fails, the PR just sits unmerged — fix it on the same branch,
-push again (`gh pr merge --auto` only needs to be run once; it stays queued
-across new pushes) or run `gh pr merge --auto --squash` again if it already
-returned.
+Auto-merge queues the pull request and completes it when the required check succeeds. If
+validation fails, fix the issue on the same branch and push again; the pull request stays
+unmerged until its checks pass.
 
-Nothing about this changes `emergency-remove-member.yml` or `build-ring.yml`
-— both already worked by opening a PR against a branch, never by pushing to
-`main` directly, so this rule formalizes what they already did rather than
-requiring anything new of them.
+The automated `build-ring.yml` and emergency-removal workflows already work through
+pull requests rather than direct pushes to `main`.
 
 ## Documentation
 
-- [`docs/member-operations.md`](docs/member-operations.md) — where each kind
-  of change belongs, and how to add a member by hand
-- [`docs/curation-policy.md`](docs/curation-policy.md) — whether an entry
-  qualifies, and the continuing-participation requirement
-- [`docs/member-link-health.md`](docs/member-link-health.md) — what the
-  health checker probes and how to read its warnings
-- [`docs/emergency-member-removal.md`](docs/emergency-member-removal.md) —
-  the narrow removal path and its required configuration
-- [`docs/adding-node-type.md`](docs/adding-node-type.md): coordinated schema,
-  client, renderer, submission, and rollout work for a new node type
-- [`docs/webring-security-research-2026-08-31.md`](docs/webring-security-research-2026-08-31.md) —
-  the security review this repo and the widget's threat model are audited against
+- [Member operations](./docs/member-operations.md) — where each kind of member change
+  belongs and how to add a member by hand.
+- [Curation policy](./docs/curation-policy.md) — which entries qualify and what continuing
+  participation requires.
+- [Member link health](./docs/member-link-health.md) — what the health checker probes and
+  how to interpret its warnings.
+- [Emergency member removal](./docs/emergency-member-removal.md) — the narrow removal path
+  and its required configuration.
+- [Adding a Node type](./docs/adding-node-type.md) — coordinated schema, client, renderer,
+  submission, and rollout work for a new medium.
+- [Webring security research](./docs/webring-security-research-2026-08-31.md) — the review
+  against which this repository and the widget threat model are audited.
 
-## How a member actually joins
+## Project status
 
-The `/join` and `/update` flows that prove someone controls the site their
-entry points to live in [indienodes-app][app], not here — a fine-grained PAT
-lets that repo's automation open pull requests against this one. Direct
-contribution against `members/*.json` is also supported and is what the docs
-above describe; a pull request proves no site ownership the way `/join` does,
-which is the trade curation weighs.
+This repository was split from `indienodes-app` so the ring is not owned by any one
+client. The app may retain a fallback mirror of the data, but this repository is the
+canonical source and publishes independently at
+[`ring.indienodes.us`](https://ring.indienodes.us).
 
-## Status
+## License
 
-This repository was split out of `indienodes-app` to make explicit that the
-ring is not owned by any one client. As of this split, `indienodes-app` still
-carries its own copy of this data pending the cutover described in that
-repo's migration plan — check there for the current state of that transition
-before assuming this repository is yet the one thing anything reads from in
-production.
+IndieNodes Ring is licensed under GPL-3.0-or-later. See [`LICENSE`](./LICENSE).
