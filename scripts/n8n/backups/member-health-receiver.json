@@ -60,13 +60,13 @@
 			"parameters": {
 				"resource": "message",
 				"operation": "create",
-				"message": "={{ $json.alerts.length + \" member link(s) crossed the failure threshold. Tap for the full report.\" }}",
+				"message": "={{ $json.alerts.length + \" member link(s) crossed the failure threshold.\\n\\n[Full report](\" + $json.reportUrl + \")\" }}",
 				"additionalFields": {
 					"title": "={{ \"IndieNodes: \" + $json.alerts.length + \" member link(s) broken\" }}",
 					"priority": 6
 				},
 				"options": {
-					"clickUrl": "={{ $json.reportUrl }}"
+					"contentType": "text/markdown"
 				}
 			},
 			"id": "abd998d6-cd37-4183-8daa-25e7b3101aca",
@@ -80,7 +80,7 @@
 					"name": "Gotify API"
 				}
 			},
-			"notes": "Credential: Gotify API. Set 'URL' to your Gotify host and 'App API Token' to an application token from Gotify's Apps tab. Message is deliberately short -- clickUrl (Options > Click URL) carries the tap-through to the styled report page 'Track streaks' just built, so the push notification itself stays a one-liner."
+			"notes": "Credential: Gotify API. Set 'URL' to your Gotify host and 'App API Token' to an application token from Gotify's Apps tab. Not clickUrl: that Options field does not exist in the Gotify node as shipped in n8n 2.36.9 (added later, on a version past what this instance runs) -- confirmed against the actual 2.36.9-tagged source, not the master branch. Any value set there gets silently dropped since the node's own property schema does not declare it. Markdown content type + an inline [text](url) link is what n8n 2.36.9's Gotify node actually supports, and it's honest about the tradeoff too: the raw OS push banner shows unrendered markdown syntax, the link only becomes tappable once the message is opened in a Gotify client that renders markdown (confirmed for the web UI and the Android app)."
 		},
 		{
 			"parameters": {
