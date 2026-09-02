@@ -18,7 +18,7 @@ on:
         required: true
         type: string
       reason:
-        description: Incident reason recorded in the commit and pull request
+        description: Incident reason recorded in the commit and pull request (between 10 and 1000 characters)
         required: true
         type: string
       confirmation:
