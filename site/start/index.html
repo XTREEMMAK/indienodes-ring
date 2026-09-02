@@ -19,6 +19,12 @@
 		<meta property="og:url" content="https://ring.indienodes.us/start/" />
 		<title>Build Your Own Website | IndieNodes</title>
 		<link rel="canonical" href="https://ring.indienodes.us/start/" />
+		<link
+			rel="alternate"
+			type="application/rss+xml"
+			title="The IndieNodes Webring"
+			href="/feed.xml"
+		/>
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -352,6 +358,26 @@
 				</ol>
 			</section>
 
+			<section class="rss-panel glass-panel" aria-labelledby="rss-title">
+				<div class="rss-panel__icon" aria-hidden="true">
+					<svg viewBox="0 0 48 48">
+						<circle cx="12" cy="36" r="4" />
+						<path d="M8 21c10.5 0 19 8.5 19 19M8 8c17.7 0 32 14.3 32 32" />
+					</svg>
+				</div>
+				<div>
+					<p class="section-kicker">Follow the ring</p>
+					<h2 id="rss-title">New Nodes, delivered by RSS.</h2>
+					<p>
+						Subscribe from any feed reader to hear when a creator joins IndieNodes. No account,
+						algorithm, or social feed is required.
+					</p>
+				</div>
+				<a class="button button--quiet" href="/feed.xml" type="application/rss+xml"
+					>Open the RSS feed</a
+				>
+			</section>
+
 			<section class="indie-web-panel glass-panel" aria-labelledby="indie-web-title">
 				<img
 					class="indie-web-panel__icon"
@@ -439,7 +465,8 @@
 		<footer>
 			<p>Independent work deserves an independent home.</p>
 			<nav aria-label="Ring and resource links">
-				<a href="/">The webring</a><a href="https://app.indienodes.us/members">Browse</a
+				<a href="/feed.xml" type="application/rss+xml">RSS feed</a><a href="/">The webring</a
+				><a href="https://app.indienodes.us/members">Browse</a
 				><a href="https://32bit.cafe/">32-Bit Cafe</a
 				><a href="https://github.com/XTREEMMAK/indienodes-ring">GitHub</a>
 			</nav>
