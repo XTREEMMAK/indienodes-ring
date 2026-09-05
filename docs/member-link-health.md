@@ -183,41 +183,47 @@ go live):
 `/webhook/indienodes-member-health`, the URL the dispatcher hands to GitHub:
 
 3. **Webhook** — responds immediately; the GitHub job never reads the response.
-4. **Code node** ("Track streaks") — tracks the three-consecutive-`broken`
-   streak per URL in `$getWorkflowStaticData('global')`, replacing `--state`.
-   The streak history therefore lives in the receiver, which is the workflow
-   that runs every time. When a URL crosses the threshold, it also stashes the
-   alert detail under a random token in `staticData.reports` and builds
-   `reportUrl`, so the next step's push can stay short.
-5. **IF** — only alerted URLs continue to the next step.
-6. **Gotify** (the native n8n node, not a raw HTTP request) — a short markdown
-   push: `"N member link(s) crossed the failure threshold.\n\n[Full
-report](<reportUrl>)"`. Not `clickUrl`: that Options field doesn't exist in
-   the Gotify node as shipped in n8n 2.36.9 (it's on a newer, unreleased-as-run
-   version — confirmed against the actual `2.36.9`-tagged source, not
-   `master`), so setting it gets silently dropped the next time the workflow
-   is opened and saved. Markdown content type with an inline link is what this
-   version's node actually supports. The tradeoff is real: the raw OS push
-   banner shows unrendered markdown syntax, and the link only becomes tappable
-   once the message is opened in a client that renders markdown (confirmed for
-   the web UI and the Android app).
+4. **Code node** ("Track streaks") — tracks consecutive `broken` results per
+   URL in `$getWorkflowStaticData('global')`. Healthy or warning results reset
+   that URL's streak. Every received run stores a complete report under a random
+   token in `staticData.reports` and builds `reportUrl`, including healthy runs.
+5. **Gotify** — receives one summary item per run directly, without a threshold
+   filter. The notification lists member/URL totals and healthy, broken, and
+   warning counts, with a markdown link to the full report. Priority is 6 when
+   any dead link reaches three consecutive failures, otherwise 3. There are no
+   individual notifications per URL. The inline markdown link preserves support
+   for the installed Gotify node; open the message in a markdown-capable client
+   to follow it.
 
 Two more nodes in the receiver render that report:
 
-7. **Webhook** (GET) at `/webhook/indienodes-member-health-report?token=<token>`
+6. **Webhook** (GET) at `/webhook/indienodes-member-health-report?token=<token>`
    — reads `staticData.reports[token]` and builds an HTML page styled to match
    the rest of the IndieNodes admin surface (the CSS is ported from
    `indienodes-app`'s `scripts/n8n/build_workflows.py`, the same `review_style`
    block `Webring - Review Action v2` uses for its own approve/reject pages),
-   listing every alerted URL, its reason, streak, and member file. An unknown
+   showing overall totals and sections for participation issues, all dead links
+   (including those below threshold), and other warnings. Each finding includes
+   its URL, reason, member reference, and suggested next step; dead links also
+   show their failure streak. Healthy runs explicitly show no issues found.
+   Existing alert-only report links remain readable after the update. An unknown
    or pruned token renders a plain "not found or expired" page in the same
    style rather than an error. Unauthenticated by design — there's no login
    system on this n8n instance for it to check against — gated only by the
    token being an unguessable value that's never logged anywhere public.
    Reports self-prune after 30 days.
-8. **Respond to Webhook**, `Content-Type: text/html`.
+7. **Respond to Webhook**, `Content-Type: text/html`.
 
-### Testing the alert without a real failure
+### Applying the summary-report update
+
+Import the updated `scripts/n8n/backups/member-health-receiver.json` into the
+existing receiver workflow, re-select its Gotify credential, and publish it.
+Keep the existing receiver so its static streak/report history is retained.
+The dispatcher and GitHub workflow do not need changes. This sends one summary
+for each report POSTed to the receiver; the standalone GitHub cron does not send
+one because it has no `resume_url`.
+
+### Testing the summary without a real failure
 
 Two more nodes exist purely for this and are meant to be temporary — delete
 `TEST trigger (delete when done testing)` and `TEST: seed near-threshold
