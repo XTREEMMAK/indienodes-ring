@@ -9,6 +9,9 @@ The short version:
 > size. It only requires that a visitor have something substantive to experience
 > right now.**
 
+> These are real independent creators making real things. Whether they're good is up
+> to you.
+
 ## Proof of creation, not proof of success
 
 It is tempting to describe this as wanting "proven" creators, but that word carries
@@ -36,6 +39,18 @@ The dividing line is not _prototype vs. demo_, or _amateur vs. professional_. A
 polished fifteen-minute game-jam release qualifies even though it is tiny. A
 technically sophisticated greybox movement prototype does not, if there is no
 experience to have yet.
+
+## Presentable, not finished
+
+Creators must have publicly available work that has reached a presentable release
+state. Works-in-progress may appear alongside an established body of work, but
+concepts, pitches, placeholders, and planned projects alone are not sufficient for
+membership.
+
+"Presentable" is about release, not polish. A rough thing put out on purpose is
+released; a beautiful thing not yet shown to anyone is not. Comics, serials, games,
+and music are routinely ongoing, and none of that counts against a submission — the
+question is only whether something has actually been put in front of people.
 
 ## By type
 
@@ -84,6 +99,33 @@ experience.
 **Does not:** screenshots alone, design documents, concept art, a teaser trailer
 with no playable build behind it, a devlog, an announced project with no release,
 or a technical experiment not intended to function as an experience.
+
+## Authenticity
+
+Separate from whether work exists is whether the Node is whose it says it is. These
+fail regardless of what is behind the `source_url`:
+
+- A Node submitted for a creator by someone unauthorized to represent them.
+- Scraped, aggregated, or republished work presented as the submitter's own.
+- Bulk or content-farm material — pages produced for volume rather than as a practice.
+- Submissions whose declared creator, type, or site do not describe a real presence.
+
+This is not a judgment about effort or quality. It is the same existence test applied
+to the _creator_ rather than the work: is there someone there.
+
+## Two content rules that are not about quality
+
+Both are creator representations under EULA §5.4 rather than reviewer taste calls, and
+both are stated on `/join`:
+
+- **Authorship.** AI-assisted tools inside a creator's process are fine. Work produced
+  purely by generative systems, where generation stands in for authorship, is not
+  eligible.
+- **Destination-site conduct.** The site a visitor is sent to must not host material
+  attacking or degrading people on the grounds listed in §5.4.
+
+A reviewer acts on these when they are visible, and otherwise relies on the
+representation, which is what §5.4 is for.
 
 ## Continuing participation
 
@@ -144,4 +186,6 @@ whether that something is any good.
 EULA §8 ("Moderation Standard") carries this as the fourth item on the review
 checklist, worded to test existence rather than merit, and §8's own statement that
 review is "not an editorial quality judgment" remains true because of that
-limit. This document is the detail behind that clause; the EULA is what binds.
+limit. This document is the detail behind that clause; the EULA is what binds. §5.4
+carries the authorship and destination-site representations, and §8's decline clause
+reaches them by reference.
