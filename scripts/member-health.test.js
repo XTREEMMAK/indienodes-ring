@@ -18,6 +18,7 @@ import {
 	applyFailureHistory,
 	assertStaticallySafeUrl,
 	collectMemberLinks,
+	extractDeepLinkUrl,
 	groupLinksByUrl,
 	hasVerificationToken,
 	isPublicIpAddress,
@@ -392,6 +393,70 @@ describe('member health probing', () => {
 			lookupImpl: publicLookup
 		});
 		assert.equal(result.outcome, 'healthy');
+	});
+
+	it('surfaces the deep-linked site on a pages.kjnet.us source page', async () => {
+		const body =
+			'<footer><a class="link-primary" href="https://real.example/">' +
+			'Their own site</a></footer>';
+		const result = await probeLink(grouped('https://pages.kjnet.us/jewel/'), {
+			checkDeepLinks: true,
+			fetchImpl: async () => new Response(body),
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.deepLinkUrl, 'https://real.example/');
+	});
+
+	it('does not deep-link a source page on a different host', async () => {
+		const body = '<a class="link-primary" href="https://real.example/">Their own site</a>';
+		const fetchImpl = mock.fn(async (_url, options) => {
+			assert.equal(options.headers.Range, 'bytes=0-0');
+			return new Response(body, { status: 200 });
+		});
+		const result = await probeLink(grouped('https://creator.example/work'), {
+			checkDeepLinks: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.deepLinkUrl, undefined);
+	});
+
+	it('is not a warning when a pages.kjnet.us page has no outbound link to deep-check', async () => {
+		const result = await probeLink(grouped('https://pages.kjnet.us/jewel/'), {
+			checkDeepLinks: true,
+			fetchImpl: async () => new Response('<p>No elsewhere section here.</p>'),
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.deepLinkUrl, undefined);
+	});
+});
+
+describe('member health: deep link extraction', () => {
+	it('finds the link-primary href and resolves it against the page URL', () => {
+		const html = '<a class="link-primary" href="/out">Their own site</a>';
+		assert.equal(
+			extractDeepLinkUrl(html, 'https://pages.kjnet.us/jewel/'),
+			'https://pages.kjnet.us/out'
+		);
+	});
+
+	it('matches link-primary among several classes, not as a substring', () => {
+		const html = '<a class="btn link-primary large" href="https://real.example/">Site</a>';
+		assert.equal(extractDeepLinkUrl(html), 'https://real.example/');
+		const almost = '<a class="link-primary-alt" href="https://real.example/">Site</a>';
+		assert.equal(extractDeepLinkUrl(almost), null);
+	});
+
+	it('returns null when no link-primary anchor is present', () => {
+		assert.equal(extractDeepLinkUrl('<p>Nothing here.</p>'), null);
+	});
+
+	it('ignores a link-primary class on a non-anchor element', () => {
+		const html = '<button class="link-primary" data-href="https://real.example/">Site</button>';
+		assert.equal(extractDeepLinkUrl(html), null);
 	});
 });
 
