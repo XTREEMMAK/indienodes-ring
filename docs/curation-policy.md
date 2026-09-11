@@ -58,19 +58,33 @@ Judged at the Node's `source_url` — the page a visitor is actually sent to.
 
 ### Audio
 
-At least one piece of music a visitor can hear.
+At least one piece of audio a visitor can hear — music or spoken-word content
+(narration, audio drama, voice work). The declared `form` (`music` or `spoken`)
+is a required, shape-only field, checked the same way `type` is: **does the
+declared form match the content?** That is the whole check — it is not a
+judgment about which form is more worthwhile, and it never gates on quality
+within a form.
 
-**Qualifies:** a single, an EP, an album, a finished composition, any publicly
-accessible original recording.
+**Music qualifies:** a single, an EP, an album, a finished composition, any
+publicly accessible original recording.
 
-**Does not, on its own:** "album coming soon", a producer seeking collaborators, a
-profile with no listenable music behind it.
+**Music does not, on its own:** "album coming soon", a producer seeking
+collaborators, a profile with no listenable music behind it.
 
-**Playing inside the ring is explicitly not required.** A Node whose audio is only
-reachable at its `source_url`, with no direct `media_url` this project can play,
-is a fully supported shape — see EULA §5.1 and `/join`'s own "No direct file? Skip
-this" path. The question is whether a visitor can hear the music _somewhere_, not
-whether IndieNodes can play it _here_.
+**Spoken qualifies:** a narrated scene, an audio drama episode, an original
+character voice reel, or comparable finished, publicly reachable spoken-word
+work.
+
+**Spoken does not, on its own:** a demo reel built entirely from client-owned
+commercial work with no original or rights-cleared piece included (see the
+pending rights-checklist item in `docs/open-questions.md` of the app repo), or
+a profile announcing spoken work with nothing a visitor can actually hear yet.
+
+**Playing inside the ring is explicitly not required, for either form.** A Node
+whose audio is only reachable at its `source_url`, with no direct `media_url`
+this project can play, is a fully supported shape — see EULA §5.1 and `/join`'s
+own "No direct file? Skip this" path. The question is whether a visitor can
+hear the audio _somewhere_, not whether IndieNodes can play it _here_.
 
 ### Writing
 
