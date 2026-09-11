@@ -73,6 +73,11 @@
 			},
 			"default": []
 		},
+		"form": {
+			"type": "string",
+			"enum": ["music", "spoken"],
+			"description": "Audio only, and required (see allOf below); must not appear on any other type. Declares whether the audio is music or spoken-word content (narration, audio drama, voice work), so playback queues never mix the two -- tags alone can't do this, since a spoken piece and a soundtrack can share every tag. No default: a silent default of `music` would mislabel spoken entries, so existing audio entries must have this added explicitly rather than backfilled automatically."
+		},
 		"tracks": {
 			"type": "array",
 			"maxItems": 3,
@@ -303,6 +308,24 @@
 			},
 			"then": {
 				"required": ["thumb_url"]
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "audio"
+					}
+				},
+				"required": ["type"]
+			},
+			"then": {
+				"required": ["form"]
+			},
+			"else": {
+				"not": {
+					"required": ["form"]
+				}
 			}
 		}
 	]
