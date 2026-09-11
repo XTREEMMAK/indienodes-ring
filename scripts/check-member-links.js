@@ -26,6 +26,7 @@ function usage() {
 		'Options:',
 		'  --check-tokens          Also confirm source pages retain their verification meta tag',
 		'  --no-participation-check Skip the continuing ring participation check',
+		'  --no-deep-link-check    Skip probing the linked-out site on a pages.kjnet.us source page',
 		'  --concurrency <count>   Maximum simultaneous requests (default: ' +
 			DEFAULT_CONCURRENCY +
 			')',
@@ -46,6 +47,7 @@ export function parseArgs(argv) {
 	const options = {
 		checkTokens: false,
 		checkParticipation: true,
+		checkDeepLinks: true,
 		concurrency: DEFAULT_CONCURRENCY,
 		failureThreshold: DEFAULT_FAILURE_THRESHOLD,
 		json: false,
@@ -66,6 +68,7 @@ export function parseArgs(argv) {
 		const argument = argv[index];
 		if (argument === '--check-tokens') options.checkTokens = true;
 		else if (argument === '--no-participation-check') options.checkParticipation = false;
+		else if (argument === '--no-deep-link-check') options.checkDeepLinks = false;
 		else if (argument === '--json') options.json = true;
 		else if (argument === '--no-state') options.statePath = null;
 		else if (argument === '--help' || argument === '-h') options.help = true;
@@ -189,7 +192,7 @@ function printHumanReport(report) {
 }
 
 export async function run(options, dependencies = {}) {
-	const allMembers = loadMembers();
+	const allMembers = dependencies.members ?? loadMembers();
 	const selected = selectMembers(allMembers, options.files);
 	const placeholders = selected.filter(({ entry }) => entry?._placeholder === true);
 	const members = selected.filter(({ entry }) => entry?._placeholder !== true);
@@ -199,12 +202,44 @@ export async function run(options, dependencies = {}) {
 			timeoutMs: options.timeoutMs,
 			checkTokens: options.checkTokens,
 			checkParticipation: options.checkParticipation,
+			checkDeepLinks: options.checkDeepLinks,
 			fetchImpl: dependencies.fetchImpl,
 			lookupImpl: dependencies.lookupImpl
 		})
 	);
+
+	// A source_url hosted on pages.kjnet.us (member-health.js's
+	// DEEP_LINK_HOSTNAME) is our own generated page, not the member's actual
+	// site -- it links out to that via a fixed template element. probeLink
+	// surfaces that as `deepLinkUrl` when found; probe it here as a genuine
+	// second URL, through the identical pipeline, so a member's real site
+	// going down is caught rather than masked by our own hosting being fine.
+	const deepLinkMemberLinks = rawResults.flatMap((result) =>
+		result.deepLinkUrl
+			? result.references.map((reference) => ({
+					url: result.deepLinkUrl,
+					kind: 'media',
+					memberId: reference.memberId,
+					memberFile: reference.memberFile,
+					field: reference.field + ' (deep link)',
+					verificationToken: ''
+				}))
+			: []
+	);
+	const deepLinks = groupLinksByUrl([deepLinkMemberLinks]);
+	const deepLinkResults = await mapConcurrent(deepLinks, options.concurrency, (link) =>
+		probeLink(link, {
+			timeoutMs: options.timeoutMs,
+			checkTokens: false,
+			checkParticipation: false,
+			checkDeepLinks: false,
+			fetchImpl: dependencies.fetchImpl,
+			lookupImpl: dependencies.lookupImpl
+		})
+	);
+
 	const history = applyFailureHistory(
-		rawResults,
+		[...rawResults, ...deepLinkResults],
 		readState(options.statePath),
 		options.failureThreshold,
 		{ prune: options.files.length === 0, now: dependencies.now }
@@ -227,6 +262,7 @@ export async function run(options, dependencies = {}) {
 		failureThreshold: options.failureThreshold,
 		checkTokens: options.checkTokens,
 		checkParticipation: options.checkParticipation,
+		checkDeepLinks: options.checkDeepLinks,
 		summary,
 		results: history.results
 	};

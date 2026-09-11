@@ -61,6 +61,28 @@ looking for one — a crawl would need robots handling, depth and politeness bud
 and a far wider address-screening surface than the single-URL model above, and
 "absent after N pages" would still not be proof of absence.
 
+### The one deliberate exception: a source_url on pages.kjnet.us
+
+`pages.kjnet.us` is our own hosting, not a member's. A member whose generated page
+lives there is a special case: the requirement above (the embed on `source_url`)
+still applies to that page, but the page itself isn't the thing a visitor is there
+to experience — it links out to the member's actual site via a fixed element the
+shared template always emits, `<a class="link-primary" href="...">` (see e.g.
+`https://pages.kjnet.us/jewel/`). Checking only that our own hosting is up would
+miss the member's real site being down, which is the failure that actually matters
+here.
+
+So when a `source_url`'s final resolved host is exactly `pages.kjnet.us` (no
+subdomains), the checker extracts that link and probes it too, through the
+identical pipeline — same redirect-following, same SSRF screening, same
+healthy/broken/warning classes, same three-strike alert threshold, tracked under
+its own key in `.member-health-state.json`. This is **not** a general crawl: it's
+one fixed selector, one hop, from the single first-party template IndieNodes
+itself controls, not something applied to arbitrary member sites. A `pages.kjnet.us`
+page with no `.link-primary` link is not a warning — some generated pages are a
+member's only presence and have nothing to link out to. Disable with
+`--no-deep-link-check` for an availability-only run of the source page itself.
+
 ### The three participation warnings, and how to triage them
 
 Participation produces three distinct reasons, because "we did not find it" and
@@ -132,11 +154,12 @@ Exit codes:
 - 1: at least one 404/410 has reached the configured threshold.
 - 2: invalid arguments, member selection, state, or another checker failure.
 
-Participation and token retention are separate. Participation is checked by
-default. With `--check-tokens`, source pages are also read up to 2 MB and checked
-for the same `indienode-verification` meta tag recognized by intake. A missing
-token is a warning, not a dead link, because availability, current ring
-participation, and continuing ownership are different questions.
+Participation, token retention, and the pages.kjnet.us deep link are separate.
+Participation and the deep-link check are both on by default. With
+`--check-tokens`, source pages are also read up to 2 MB and checked for the same
+`indienode-verification` meta tag recognized by intake. A missing token is a
+warning, not a dead link, because availability, current ring participation, and
+continuing ownership are different questions.
 
 ## Scheduled runs
 
