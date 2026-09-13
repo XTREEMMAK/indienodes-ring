@@ -1,0 +1,29 @@
+{
+	"id": "comic-nori-jammy",
+	"creator": "Nori Jammy",
+	"type": "comic",
+	"why": "Horror cartoonist, musician, and writer from Appalachia.",
+	"tags": ["horror", "drama", "comedy", "comic", "art", "animation"],
+	"pages": [
+		{
+			"image_url": "https://frammyjammy.com/suzu-and-jack/img/comics/pg29.png",
+			"caption": "One Panels - Jack's Perspective"
+		},
+		{
+			"image_url": "https://frammyjammy.com/suzu-and-jack/img/comics/pg28.png",
+			"caption": "One Panels - Comfort"
+		},
+		{
+			"image_url": "https://frammyjammy.com/suzu-and-jack/img/comics/pg27.png",
+			"caption": "One Panels - Sunny Day"
+		}
+	],
+	"thumb_url": "https://frammyjammy.com/graphics/bg-art/rainbow-baby-blue.png",
+	"thumb_position": {
+		"x": 50,
+		"y": 50
+	},
+	"source_url": "https://frammyjammy.com/suzu-and-jack/",
+	"verification_token": "79ca089920914acf2e0b242d93238419",
+	"joined_at": "2026-09-13T02:03:07.444Z"
+}
