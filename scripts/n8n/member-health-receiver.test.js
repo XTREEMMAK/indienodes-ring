@@ -49,6 +49,7 @@ test('warnings and healthy runs each produce one linked summary without the thre
 		'ring_participation_missing',
 		'ring_widget_site_id_unmatched',
 		'ring_participation_indeterminate',
+		'media_cors_missing',
 		'http_503'
 	]) {
 		const report = receive([result('warning', reason)], state);

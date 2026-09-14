@@ -18,6 +18,12 @@ export const DEEP_LINK_HOSTNAME = 'pages.kjnet.us';
 const USER_AGENT = 'IndieNodesMemberHealth/1.0 (+https://indienodes.us)';
 
 /**
+ * The origin the ring's player runs on, sent as `Origin` when checking an audio
+ * track so a host that answers CORS per origin answers for the right one.
+ */
+export const PLAYER_ORIGIN = 'https://app.indienodes.us';
+
+/**
  * @typedef {object} MemberLink
  * @property {string} url
  * @property {'source' | 'media'} kind
@@ -437,6 +443,7 @@ function safeErrorMessage(error) {
  * @property {URL} checkedUrl
  * @property {number} statusCode
  * @property {{ text: string, truncated: boolean } | null} body
+ * @property {string | null} allowOrigin the final response's Access-Control-Allow-Origin
  */
 
 /**
@@ -455,10 +462,10 @@ function safeErrorMessage(error) {
  * page and its site-root fallback, so the second request cannot quietly be a
  * weaker copy of the first.
  * @param {string} startUrl
- * @param {{ timeoutMs: number, fetchImpl: typeof fetch, lookupImpl: LookupAll, wantsBody: (url: URL) => boolean }} options
+ * @param {{ timeoutMs: number, fetchImpl: typeof fetch, lookupImpl: LookupAll, wantsBody: (url: URL) => boolean, origin?: string }} options
  * @returns {Promise<FetchedPage | FetchFailure>}
  */
-async function fetchValidated(startUrl, { timeoutMs, fetchImpl, lookupImpl, wantsBody }) {
+async function fetchValidated(startUrl, { timeoutMs, fetchImpl, lookupImpl, wantsBody, origin }) {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), timeoutMs);
 	/**
@@ -490,6 +497,7 @@ async function fetchValidated(startUrl, { timeoutMs, fetchImpl, lookupImpl, want
 					headers: {
 						Accept: needsBody ? 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.1' : '*/*',
 						...(needsBody ? {} : { Range: 'bytes=0-0' }),
+						...(origin ? { Origin: origin } : {}),
 						'User-Agent': USER_AGENT
 					}
 				});
@@ -525,12 +533,13 @@ async function fetchValidated(startUrl, { timeoutMs, fetchImpl, lookupImpl, want
 				return fail('warning', 'http_' + response.status, statusDetails);
 			}
 
+			const allowOrigin = response.headers.get('access-control-allow-origin');
 			if (!needsBody) {
 				await response.body?.cancel();
-				return { ok: true, checkedUrl, statusCode: response.status, body: null };
+				return { ok: true, checkedUrl, statusCode: response.status, body: null, allowOrigin };
 			}
 			const body = await readBodyUpTo(response.body, MAX_SOURCE_BYTES);
-			return { ok: true, checkedUrl, statusCode: response.status, body };
+			return { ok: true, checkedUrl, statusCode: response.status, body, allowOrigin };
 		}
 	} finally {
 		clearTimeout(timeout);
@@ -586,8 +595,24 @@ function siteHostname(hostname) {
 }
 
 /**
+ * Whether a link is an audio track, the one kind of media whose CORS header
+ * matters: the player can only analyse a track for the reactive background
+ * when its host sends one. Images and pages load either way.
  * @param {GroupedLink} link
- * @param {{ timeoutMs?: number, checkTokens?: boolean, checkParticipation?: boolean, checkDeepLinks?: boolean, fetchImpl?: typeof fetch, lookupImpl?: LookupAll }} [options]
+ */
+function isAudioTrack(link) {
+	return link.references.some(({ field }) => /^tracks\[\d+\]\.media_url$/.test(field));
+}
+
+/** @param {string | null} value */
+export function allowsPlayerOrigin(value) {
+	const allowed = value?.trim();
+	return allowed === '*' || allowed === PLAYER_ORIGIN;
+}
+
+/**
+ * @param {GroupedLink} link
+ * @param {{ timeoutMs?: number, checkTokens?: boolean, checkParticipation?: boolean, checkDeepLinks?: boolean, checkMediaCors?: boolean, fetchImpl?: typeof fetch, lookupImpl?: LookupAll }} [options]
  * @returns {Promise<ProbeResult>}
  */
 export async function probeLink(link, options = {}) {
@@ -595,6 +620,7 @@ export async function probeLink(link, options = {}) {
 	const checkTokens = options.checkTokens ?? false;
 	const checkParticipation = options.checkParticipation ?? false;
 	const checkDeepLinks = options.checkDeepLinks ?? false;
+	const checkCors = (options.checkMediaCors ?? false) && isAudioTrack(link);
 	const fetchOptions = {
 		timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 		fetchImpl: options.fetchImpl ?? fetch,
@@ -610,12 +636,26 @@ export async function probeLink(link, options = {}) {
 			link.includesSource &&
 			(checkParticipation ||
 				(checkTokens && link.verificationTokens.size > 0) ||
-				isDeepLinkPage(url))
+				isDeepLinkPage(url)),
+		origin: checkCors ? PLAYER_ORIGIN : undefined
 	});
 	if (!page.ok) return makeResult(link, page.outcome, page.reason, startedAt, page.details);
 
-	const { checkedUrl, statusCode, body } = page;
+	const { checkedUrl, statusCode, body, allowOrigin } = page;
 	if (!body) {
+		if (checkCors && !allowsPlayerOrigin(allowOrigin)) {
+			// Not broken: the track still plays, through the player's unwired
+			// element. What it loses is the reactive background, which is worth
+			// telling the member about because they cannot see it from their side.
+			return makeResult(link, 'warning', 'media_cors_missing', startedAt, {
+				statusCode,
+				finalUrl: checkedUrl.href,
+				detail:
+					"The track loads, but its host doesn't send Access-Control-Allow-Origin, so it plays " +
+					'without driving the reactive background. File Garden and archive.org send it; a ' +
+					'self-hosted server needs it added (see /join, "Hosting on your own site").'
+			});
+		}
 		return makeResult(link, 'healthy', 'ok', startedAt, { statusCode, finalUrl: checkedUrl.href });
 	}
 

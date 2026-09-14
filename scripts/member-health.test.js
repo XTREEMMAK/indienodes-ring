@@ -15,6 +15,7 @@
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+	allowsPlayerOrigin,
 	applyFailureHistory,
 	assertStaticallySafeUrl,
 	collectMemberLinks,
@@ -24,6 +25,7 @@ import {
 	isPublicIpAddress,
 	LinkHealthError,
 	MAX_SOURCE_BYTES,
+	PLAYER_ORIGIN,
 	probeLink,
 	ringParticipation,
 	validateExternalUrl
@@ -614,6 +616,129 @@ describe('member health: site root fallback for participation', () => {
 		});
 		assert.equal(result.reason, 'verification_token_missing');
 		assert.equal(result.participationUrl, 'https://creator.example/');
+	});
+});
+
+describe('member health: audio track CORS', () => {
+	const TRACK = 'https://creator.example/audio/track.mp3';
+
+	/** @param {string} url @param {'tracks' | 'pages'} [kind] */
+	function mediaLink(url = TRACK, kind = 'tracks') {
+		const entry =
+			kind === 'tracks'
+				? {
+						id: 'audio-example',
+						source_url: 'https://creator.example/',
+						tracks: [{ media_url: url }]
+					}
+				: {
+						id: 'comic-example',
+						source_url: 'https://creator.example/',
+						pages: [{ image_url: url }]
+					};
+		return groupLinksByUrl([collectMemberLinks(entry, entry.id + '.json')]).find(
+			(link) => link.url === url
+		);
+	}
+
+	/** @param {Record<string, string>} headers @param {number} [status] */
+	function responding(headers, status = 206) {
+		return mock.fn(async (_url, options) => {
+			responding.lastHeaders = options.headers;
+			return new Response(new Uint8Array([1]), { status, headers });
+		});
+	}
+
+	it('passes a track whose host allows any origin, and asks as the player', async () => {
+		const fetchImpl = responding({ 'Access-Control-Allow-Origin': '*' });
+		const result = await probeLink(mediaLink(), {
+			checkMediaCors: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(responding.lastHeaders.Origin, PLAYER_ORIGIN);
+		assert.equal(responding.lastHeaders.Range, 'bytes=0-0');
+	});
+
+	it('warns, without calling it broken, when a track host sends no CORS header', async () => {
+		const result = await probeLink(mediaLink(), {
+			checkMediaCors: true,
+			fetchImpl: responding({}),
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'warning');
+		assert.equal(result.reason, 'media_cors_missing');
+		assert.match(result.detail, /reactive background/);
+	});
+
+	it('accepts the player origin by name, but not some other origin', async () => {
+		const named = await probeLink(mediaLink(), {
+			checkMediaCors: true,
+			fetchImpl: responding({ 'Access-Control-Allow-Origin': PLAYER_ORIGIN }),
+			lookupImpl: publicLookup
+		});
+		assert.equal(named.outcome, 'healthy');
+		const other = await probeLink(mediaLink(), {
+			checkMediaCors: true,
+			fetchImpl: responding({ 'Access-Control-Allow-Origin': 'https://creator.example' }),
+			lookupImpl: publicLookup
+		});
+		assert.equal(other.reason, 'media_cors_missing');
+	});
+
+	it('does not check CORS on images, or when the check is off', async () => {
+		const image = await probeLink(mediaLink('https://creator.example/p1.png', 'pages'), {
+			checkMediaCors: true,
+			fetchImpl: responding({}),
+			lookupImpl: publicLookup
+		});
+		assert.equal(image.outcome, 'healthy');
+		assert.equal(responding.lastHeaders.Origin, undefined);
+
+		const off = await probeLink(mediaLink(), {
+			checkMediaCors: false,
+			fetchImpl: responding({}),
+			lookupImpl: publicLookup
+		});
+		assert.equal(off.outcome, 'healthy');
+	});
+
+	it('still reports a missing track as broken, not as a CORS problem', async () => {
+		const result = await probeLink(mediaLink(), {
+			checkMediaCors: true,
+			fetchImpl: responding({}, 404),
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'broken');
+		assert.equal(result.reason, 'http_404');
+	});
+
+	it('reads the header off the final response after a redirect', async () => {
+		const fetchImpl = mock.fn(async (url) =>
+			String(url) === TRACK
+				? new Response('', { status: 302, headers: { location: 'https://cdn.example/track.mp3' } })
+				: new Response(new Uint8Array([1]), {
+						status: 206,
+						headers: { 'Access-Control-Allow-Origin': '*' }
+					})
+		);
+		const result = await probeLink(mediaLink(), {
+			checkMediaCors: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.finalUrl, 'https://cdn.example/track.mp3');
+	});
+
+	it('recognizes only a wildcard or the exact player origin', () => {
+		assert.equal(allowsPlayerOrigin('*'), true);
+		assert.equal(allowsPlayerOrigin(' * '), true);
+		assert.equal(allowsPlayerOrigin(PLAYER_ORIGIN), true);
+		assert.equal(allowsPlayerOrigin(PLAYER_ORIGIN + '/'), false);
+		assert.equal(allowsPlayerOrigin('https://indienodes.us'), false);
+		assert.equal(allowsPlayerOrigin(null), false);
 	});
 });
 
