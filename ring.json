@@ -2,6 +2,33 @@
 	"version": "1.0",
 	"entries": [
 		{
+			"id": "audio-george-r-powell",
+			"creator": "George R. Powell",
+			"type": "audio",
+			"form": "music",
+			"why": "I'm a composer for film, animation, and video games!",
+			"tags": ["orchestral", "vgm", "fantasy", "film scores", "digital rock"],
+			"tracks": [
+				{
+					"label": "True Tail - Battle",
+					"media_url": "https://pages.kjnet.us/georgerpowell/assets/audio/TrueTail-Battle%20Animatic%20Concept%20Part%202.mp3"
+				},
+				{
+					"label": "Cosmic Nautilus (Theme for the Calypso)",
+					"media_url": "https://pages.kjnet.us/georgerpowell/assets/audio/06-Cosmic%20Nautilus%20(Theme%20for%20the%20Calypso).mp3"
+				},
+				{
+					"label": "Armed and Pissed Off (Foe Encounter)",
+					"media_url": "https://pages.kjnet.us/georgerpowell/assets/audio/04-Armed%20and%20Pissed%20Off%20(Foe%20Enounter).mp3"
+				}
+			],
+			"thumb_url": "https://pages.kjnet.us/georgerpowell/assets/profile.avif",
+			"thumb_position": { "x": 50, "y": 50 },
+			"source_url": "https://pages.kjnet.us/georgerpowell/",
+			"verification_token": "0f122804c60f4a115840a5d482f3aed6",
+			"joined_at": "2026-09-14T02:55:12.915Z"
+		},
+		{
 			"id": "audio-key-jay",
 			"creator": "Key Jay",
 			"type": "audio",
