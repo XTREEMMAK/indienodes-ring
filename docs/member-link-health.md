@@ -25,8 +25,8 @@ The result classes are deliberately conservative:
 - Healthy: a final 2xx response.
 - Broken: a final 404 or 410 response.
 - Warning: timeouts, DNS/TLS failures, 401/403, 429, 5xx, unsafe addresses,
-  redirect problems, the three participation results below, and optional
-  missing-token results.
+  redirect problems, the three participation results below, an audio track
+  whose host sends no CORS header, and optional missing-token results.
 
 Warnings are visible but do not fail the command. A broken URL must repeat on
 three consecutive stateful runs before the command exits with an alert. Any
@@ -170,6 +170,23 @@ human, and never removes anyone. **Confirm in a browser before acting on any of
 these three warnings.** Server-rendering the link, or putting it in a static part
 of the document, is the member-side fix.
 
+### Audio tracks without a CORS header
+
+Every `tracks[].media_url` is requested with `Origin: https://app.indienodes.us`,
+and the final response's `Access-Control-Allow-Origin` is read. Anything other
+than `*` or that exact origin is reported as `media_cors_missing`.
+
+It is a warning, never broken, because the track still plays: the player loads a
+refusing host's track into a second audio element that is never wired into Web
+Audio. What the track loses is the reactive background, which only a CORS-mode
+fetch can feed. The member cannot see that from their side, so it is worth
+telling them. File Garden, archive.org, Neocities and GitHub Pages send the
+header; a self-hosted server needs it added, and `/join`'s "Hosting on your own
+site" section has the setups. Behind a CDN, remember to purge it afterwards.
+
+Images and pages are not checked: they load either way. Disable with
+`--no-cors-check`.
+
 ## Commands
 
 ```bash
@@ -192,8 +209,9 @@ Exit codes:
 - 1: at least one 404/410 has reached the configured threshold.
 - 2: invalid arguments, member selection, state, or another checker failure.
 
-Participation, token retention, and the pages.kjnet.us deep link are separate.
-Participation and the deep-link check are both on by default. With
+Participation, token retention, the pages.kjnet.us deep link, and the audio CORS
+check are separate. Participation, the deep-link check and the CORS check are on
+by default. With
 `--check-tokens`, source pages are also read up to 2 MB and checked for the same
 `indienode-verification` meta tag recognized by intake. A missing token is a
 warning, not a dead link, because availability, current ring participation, and

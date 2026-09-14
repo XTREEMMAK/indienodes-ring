@@ -27,6 +27,7 @@ function usage() {
 		'  --check-tokens          Also confirm source pages retain their verification meta tag',
 		'  --no-participation-check Skip the continuing ring participation check',
 		'  --no-deep-link-check    Skip probing the linked-out site on a pages.kjnet.us source page',
+		'  --no-cors-check         Skip warning about audio tracks whose host sends no CORS header',
 		'  --concurrency <count>   Maximum simultaneous requests (default: ' +
 			DEFAULT_CONCURRENCY +
 			')',
@@ -48,6 +49,7 @@ export function parseArgs(argv) {
 		checkTokens: false,
 		checkParticipation: true,
 		checkDeepLinks: true,
+		checkMediaCors: true,
 		concurrency: DEFAULT_CONCURRENCY,
 		failureThreshold: DEFAULT_FAILURE_THRESHOLD,
 		json: false,
@@ -69,6 +71,7 @@ export function parseArgs(argv) {
 		if (argument === '--check-tokens') options.checkTokens = true;
 		else if (argument === '--no-participation-check') options.checkParticipation = false;
 		else if (argument === '--no-deep-link-check') options.checkDeepLinks = false;
+		else if (argument === '--no-cors-check') options.checkMediaCors = false;
 		else if (argument === '--json') options.json = true;
 		else if (argument === '--no-state') options.statePath = null;
 		else if (argument === '--help' || argument === '-h') options.help = true;
@@ -203,6 +206,7 @@ export async function run(options, dependencies = {}) {
 			checkTokens: options.checkTokens,
 			checkParticipation: options.checkParticipation,
 			checkDeepLinks: options.checkDeepLinks,
+			checkMediaCors: options.checkMediaCors,
 			fetchImpl: dependencies.fetchImpl,
 			lookupImpl: dependencies.lookupImpl
 		})
@@ -263,6 +267,7 @@ export async function run(options, dependencies = {}) {
 		checkTokens: options.checkTokens,
 		checkParticipation: options.checkParticipation,
 		checkDeepLinks: options.checkDeepLinks,
+		checkMediaCors: options.checkMediaCors,
 		summary,
 		results: history.results
 	};
