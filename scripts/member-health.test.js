@@ -434,6 +434,189 @@ describe('member health probing', () => {
 	});
 });
 
+describe('member health: site root fallback for participation', () => {
+	const ringLink = '<footer><a href="https://app.indienodes.us/go/random">IndieNodes</a></footer>';
+
+	/** @param {Record<string, () => Response>} routes keyed by full URL */
+	function routed(routes) {
+		return mock.fn(async (url) => {
+			const route = routes[String(url)];
+			return route ? route() : new Response('not found', { status: 404 });
+		});
+	}
+
+	it('passes a member whose embed is on the site root instead of the submitted page', async () => {
+		// comic-nori-jammy: nothing on /suzu-and-jack/, the footer link on /.
+		const fetchImpl = routed({
+			'https://frammyjammy.com/suzu-and-jack/': () => new Response('<p>The comic.</p>'),
+			'https://frammyjammy.com/': () => new Response(ringLink)
+		});
+		const result = await probeLink(grouped('https://frammyjammy.com/suzu-and-jack/'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.finalUrl, 'https://frammyjammy.com/suzu-and-jack/');
+		assert.equal(result.participationUrl, 'https://frammyjammy.com/');
+		assert.equal(fetchImpl.mock.callCount(), 2);
+	});
+
+	it('does not fetch the root when the submitted page already participates', async () => {
+		const fetchImpl = routed({ 'https://creator.example/work': () => new Response(ringLink) });
+		const result = await probeLink(grouped(), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.participationUrl, undefined);
+		assert.equal(fetchImpl.mock.callCount(), 1);
+	});
+
+	it('names both pages when neither carries an embed', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/': () => new Response('<p>Home.</p>')
+		});
+		const result = await probeLink(grouped(), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.equal(result.finalUrl, 'https://creator.example/work');
+		assert.match(result.detail, /https:\/\/creator\.example\/\)/);
+	});
+
+	it('prefers a wrong site-id on the root over nothing at all, and says where it is', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/': () =>
+				new Response('<indienode-widget site-id="your-ring-entry-id"></indienode-widget>')
+		});
+		const result = await probeLink(grouped(), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_widget_site_id_unmatched');
+		assert.equal(result.participationUrl, 'https://creator.example/');
+		assert.match(result.detail, /^The site root/);
+	});
+
+	it('keeps the source result, never a broken one, when the root cannot be read', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>')
+		});
+		const result = await probeLink(grouped(), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'warning');
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.equal(result.statusCode, 200);
+		assert.match(result.detail, /could not be read: http 404/);
+	});
+
+	it('never falls back to the shared pages.kjnet.us root', async () => {
+		const fetchImpl = routed({
+			'https://pages.kjnet.us/jewel/': () => new Response('<p>No embed.</p>'),
+			'https://pages.kjnet.us/': () => new Response(ringLink)
+		});
+		const result = await probeLink(grouped('https://pages.kjnet.us/jewel/'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.equal(fetchImpl.mock.callCount(), 1);
+	});
+
+	it('does not refetch when the submitted page is already the root', async () => {
+		const fetchImpl = routed({ 'https://creator.example/': () => new Response('<p>Home.</p>') });
+		const result = await probeLink(grouped('https://creator.example/'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.equal(fetchImpl.mock.callCount(), 1);
+	});
+
+	it('does not count a root that redirects to another site', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/': () =>
+				new Response('', { status: 302, headers: { location: 'https://linkinbio.example/me' } }),
+			'https://linkinbio.example/me': () => new Response(ringLink)
+		});
+		const result = await probeLink(grouped(), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.match(result.detail, /redirects off-site/);
+	});
+
+	it('follows a root redirect within the same site, www included', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/': () =>
+				new Response('', { status: 301, headers: { location: 'https://www.creator.example/' } }),
+			'https://www.creator.example/': () => new Response(ringLink)
+		});
+		const result = await probeLink(grouped(), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.participationUrl, 'https://www.creator.example/');
+	});
+
+	it('screens a root redirect to a private address before requesting it', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/': () =>
+				new Response('', { status: 302, headers: { location: 'http://intranet.creator.example/' } })
+		});
+		const lookupImpl = async (hostname) =>
+			hostname === 'intranet.creator.example'
+				? [{ address: '10.0.0.5', family: 4 }]
+				: [{ address: '93.184.216.34', family: 4 }];
+		const result = await probeLink(grouped(), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl
+		});
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.match(result.detail, /could not be read: unsafe url/);
+		assert.ok(
+			fetchImpl.mock.calls.every(({ arguments: [url] }) => !String(url).includes('intranet')),
+			'the private target was requested'
+		);
+	});
+
+	it('still checks the verification token on the submitted page, not the root', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work, token removed.</p>'),
+			'https://creator.example/': () =>
+				new Response(ringLink + '<meta name="indienode-verification" content="token-123">')
+		});
+		const result = await probeLink(grouped(), {
+			checkParticipation: true,
+			checkTokens: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'verification_token_missing');
+		assert.equal(result.participationUrl, 'https://creator.example/');
+	});
+});
+
 describe('member health: deep link extraction', () => {
 	it('finds the link-primary href and resolves it against the page URL', () => {
 		const html = '<a class="link-primary" href="/out">Their own site</a>';
@@ -586,6 +769,83 @@ describe('member health: ring participation detection', () => {
 		);
 		assert.equal(
 			ringParticipation('<a href="https://elsewhere.example/go/random">r</a>', []),
+			'none'
+		);
+	});
+
+	// Regression: the 2026-09-14 report failed every member, because every
+	// snippet indienodes-app hands out names app.indienodes.us and only the
+	// bare and www hosts were accepted. These are the members' real markup.
+	it('recognizes every tier on app.indienodes.us, the host the app actually hands out', () => {
+		assert.equal(
+			ringParticipation(
+				'<iframe src="https://app.indienodes.us/embed-frame?site-id=audio-key-jay" ' +
+					'title="IndieNodes webring" width="260" height="150" style="border:0;" ' +
+					'sandbox="allow-scripts allow-popups" loading="lazy"></iframe>',
+				['audio-key-jay']
+			),
+			'member'
+		);
+		assert.equal(
+			ringParticipation(
+				'<iframe src="https://app.indienodes.us/embed-frame?site-id=audio-georgerpowell"></iframe>',
+				['audio-george-r-powell']
+			),
+			'unmatched-widget'
+		);
+		assert.equal(
+			ringParticipation(
+				'<script type="module" src="https://app.indienodes.us/embed.v1.js"></script>\n' +
+					'<indienode-widget site-id="audio-example"></indienode-widget>',
+				['audio-example']
+			),
+			'member'
+		);
+		assert.equal(
+			ringParticipation(
+				'<a href="https://app.indienodes.us/go/random" target="_blank" ' +
+					'rel="noopener noreferrer">&lt;&lt; Member of IndieNodes &gt;&gt;</a>',
+				['comic-nori-jammy']
+			),
+			'link'
+		);
+	});
+
+	it('recognizes a badge image however it is wrapped or wherever it links', () => {
+		assert.equal(
+			ringParticipation(
+				'<span data-title="IndieNodes"><a href="https://app.indienodes.us/" target="_blank" ' +
+					'rel="noopener noreferrer"><img src="https://app.indienodes.us/badges/classic.svg" ' +
+					'width="88" height="31" alt="Member of IndieNodes"></a></span>',
+				['comic-nori-jammy']
+			),
+			'link'
+		);
+		assert.equal(
+			ringParticipation(
+				'<img alt="" src="//indienodes.us/badges/type-coded-audio.svg">',
+				[],
+				'https://creator.example/'
+			),
+			'link'
+		);
+	});
+
+	it('does not count a bare home-page link, or a badge path on another host', () => {
+		assert.equal(
+			ringParticipation('<a href="https://app.indienodes.us/">IndieNodes</a>', []),
+			'none'
+		);
+		assert.equal(
+			ringParticipation('<img src="https://elsewhere.example/badges/classic.svg">', []),
+			'none'
+		);
+		assert.equal(
+			ringParticipation('<img src="/badges/classic.svg">', [], 'https://creator.example/work'),
+			'none'
+		);
+		assert.equal(
+			ringParticipation('<img src="https://app.indienodes.us/icons/logo.svg">', []),
 			'none'
 		);
 	});

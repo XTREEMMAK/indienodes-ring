@@ -144,11 +144,19 @@ representation, which is what §5.4 is for.
 ## Continuing participation
 
 Everything above is judged once, at review. One requirement continues after that:
-**the ring link has to be on the page `source_url` points at.** Any of the three
-tiers satisfies it — the full widget, the 88×31 badge, or the plain text link.
+**the ring link has to be on the page `source_url` points at, or on the home page of
+that same site.** Any tier satisfies it — the full widget (framed or script), the
+88×31 badge, or the plain text link.
 
-This is one page, not a site-wide obligation. A member is free to carry the link
-everywhere or nowhere else; what matters is the page a visitor actually lands on.
+The home page counts because members do put the ring there rather than on the page
+they submitted, and a site-wide footer is the natural home for a webring. It is the
+same site as the verified page (same host, `www.` aside), and a visitor who lands on
+`source_url` is one click from it. This is the one exception, not a site-wide search:
+no other page counts, and it does not apply to shared hosting such as
+`pages.kjnet.us`, whose root is not any single member's.
+
+Otherwise this is one page, not a site-wide obligation. A member is free to carry the
+link everywhere or nowhere else; what matters is the page a visitor actually lands on.
 That page is the requirement for two reasons, and both are structural rather than
 administrative:
 

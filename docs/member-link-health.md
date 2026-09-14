@@ -33,17 +33,30 @@ three consecutive stateful runs before the command exits with an alert. Any
 healthy or uncertain result resets that URL's definite-failure streak. Nothing
 automatically removes a member or edits ring data.
 
-Continuing participation is checked by default on source pages. The checker
-recognizes three tiers: a full `<indienode-widget>` whose `site-id` matches the
-member, an `<iframe>` whose `src` is `indienodes.us/embed-frame?site-id=<id>` for
-that same member, and the canonical `/go/random` link used by the script-free
-badge and text-link tiers. A `site-id` is matched case-insensitively and trimmed
-in both embed tiers, and `href`/`src` are resolved against the page's own final
-URL, so a protocol-relative `//indienodes.us/go/random` counts where it previously
-did not. Note that a root-relative `/go/random` or `/embed-frame` resolves to the
-member's _own_ site and is correctly not a ring link. Absence is a warning for
-human review, never an automatic removal. Use `--no-participation-check` only for
-a deliberately availability-only run.
+Continuing participation is checked by default on source pages. Ring URLs may be
+on any of `app.indienodes.us` (the host every `/widget` snippet actually names),
+`indienodes.us`, or `www.indienodes.us`. The checker recognizes every tier:
+
+- **Script widget:** an `<indienode-widget>` whose `site-id` matches the member.
+  The `embed.v1.js` script itself isn't matched; the element carries the id.
+- **Framed widget:** an `<iframe>` whose `src` is `/embed-frame?site-id=<id>` on a
+  ring host, for that same member.
+- **Text link:** an `<a>` whose `href` is `/go/random` on a ring host.
+- **Badge:** the same `/go/random` link, _or_ an `<img>` whose `src` is a
+  `/badges/*.svg` on a ring host, however it is wrapped or wherever it links.
+  A bare link to a ring home page does not count, since an ordinary mention of
+  IndieNodes looks exactly like that.
+
+A `site-id` is matched case-insensitively and trimmed in both widget tiers, and
+`href`/`src` are resolved against the page's own final URL, so a protocol-relative
+`//indienodes.us/go/random` counts. Note that a root-relative `/go/random`,
+`/embed-frame`, or `/badges/…` resolves to the member's _own_ site and is correctly
+not a ring link. Absence is a warning for human review, never an automatic removal.
+Use `--no-participation-check` only for a deliberately availability-only run.
+
+Until 2026-09-14 only the bare and www hosts were accepted. Every snippet the app
+hands out names `app.indienodes.us`, so that week's report failed every member,
+each of whom carried a working embed.
 
 The frame tier is not an afterthought: it is the integration
 [`webring-security-research-2026-08-31.md`](./webring-security-research-2026-08-31.md)
@@ -53,15 +66,40 @@ host page the way the script widget can. It went unrecognized here until
 `<iframe src>` is not an `<a>` — so a member carrying the _recommended_ embed was
 reported as not participating at all.
 
-Only `source_url` is checked, which is the requirement rather than a shortcut: it
-is the one page whose ownership was proven, and the one page visitors are sent to.
-See `curation-policy.md`, "Continuing participation." There is deliberately no
-second field naming where a member put their widget, and the checker does not crawl
-looking for one — a crawl would need robots handling, depth and politeness budgets,
-and a far wider address-screening surface than the single-URL model above, and
-"absent after N pages" would still not be proof of absence.
+`source_url` is checked first, because it is the one page whose ownership was
+proven and the one page visitors are sent to. See `curation-policy.md`, "Continuing
+participation." There is deliberately no second field naming where a member put
+their widget, and the checker does not crawl looking for one — a crawl would need
+robots handling, depth and politeness budgets, and a far wider address-screening
+surface than the single-URL model above, and "absent after N pages" would still not
+be proof of absence.
 
-### The one deliberate exception: a source_url on pages.kjnet.us
+### The site root fallback
+
+The single exception is the site's home page. When the source page carries no
+passing embed, the checker fetches `/` on the same origin as the page's final URL,
+and keeps whichever result is better (a passing embed, then a wrong `site-id`, then
+an indeterminate read, then nothing). A pass found there is reported `healthy` with
+`participationUrl` naming the root. It exists because members do put the ring in a
+site-wide footer rather than on the page they submitted: comic-nori-jammy's link is
+on `frammyjammy.com/`, not on `/suzu-and-jack/`.
+
+It is bounded the same way as the deep link below, one fixed hop rather than a crawl:
+
+- The root URL comes only from the already-validated source URL, never from page
+  content, and is fetched through the same pipeline: per-hop SSRF screening,
+  manual redirects, the byte cap, its own timeout.
+- It is skipped when the source page already passes, when it already _is_ `/`,
+  and on `pages.kjnet.us`, whose root is shared by every generated page. An id-less
+  badge there would otherwise count for all of them.
+- A root that redirects to another site (`www.` aside), such as a link-in-bio page,
+  is not counted.
+- A root that can't be read (404, timeout, unsafe redirect) never marks the member
+  broken. The source page's own warning stands, and its `detail` says what
+  happened at the root.
+- The verification token is still checked only on `source_url`.
+
+### The pages.kjnet.us deep link
 
 `pages.kjnet.us` is our own hosting, not a member's. A member whose generated page
 lives there is a special case: the requirement above (the embed on `source_url`)
@@ -88,11 +126,11 @@ member's only presence and have nothing to link out to. Disable with
 Participation produces three distinct reasons, because "we did not find it" and
 "there is nothing there" are different claims and only one of them is ever certain.
 
-| Reason                             | What it means                                                                                           | Usual fix                                          |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `ring_widget_site_id_unmatched`    | The page carries a ring embed — widget or `/embed-frame` iframe — whose `site-id` matches no member id. | Tell the member to correct one attribute.          |
-| `ring_participation_indeterminate` | Nothing was found, **and** the page hit the read limit before the end.                                  | Open the page and look. The checker does not know. |
-| `ring_participation_missing`       | Nothing was found in a page read to completion.                                                         | Ask the member to add a ring link.                 |
+| Reason                             | What it means                                                                                                                     | Usual fix                                          |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `ring_widget_site_id_unmatched`    | The page (or its site root) carries a ring embed — script widget or `/embed-frame` iframe — whose `site-id` matches no member id. | Tell the member to correct one attribute.          |
+| `ring_participation_indeterminate` | Nothing was found, **and** the page hit the read limit before the end.                                                            | Open the page and look. The checker does not know. |
+| `ring_participation_missing`       | Nothing was found in a page read to completion.                                                                                   | Ask the member to add a ring link.                 |
 
 The most likely of the three is the first, and it is largely our own doing. The
 `/widget` page hands out the snippet with `site-id="your-ring-entry-id"`, a
