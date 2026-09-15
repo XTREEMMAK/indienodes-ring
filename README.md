@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://ring.indienodes.us">Visit the ring</a> ·
+  <a href="https://indienodes.neocities.org">Mirror</a> ·
   <a href="#run-it-locally">Run locally</a> ·
   <a href="#member-operations">Member operations</a> ·
   <a href="#documentation">Documentation</a>
@@ -75,7 +76,7 @@ scripts/
   n8n/backups/                Checked-in member-health workflow exports
 ring.json                     Generated artifact; do not hand-edit
 feed.xml                      Generated at publish time; never committed
-site/                         Static site for ring.indienodes.us
+site/                         Static site for ring.indienodes.us, mirrored to indienodes.neocities.org
 ```
 
 ## Run it locally
@@ -159,6 +160,8 @@ pull requests rather than direct pushes to `main`.
   submission, and rollout work for a new medium.
 - [Webring security research](./docs/webring-security-research-2026-08-31.md) — the review
   against which this repository and the widget threat model are audited.
+- [Neocities mirror](./docs/neocities-mirror.md) — how `site/` is mirrored to
+  `indienodes.neocities.org` and how to recover a failed deploy.
 
 ## Project status
 
