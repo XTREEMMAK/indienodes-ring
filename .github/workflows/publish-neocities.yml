@@ -1,0 +1,80 @@
+# Mirrors site/ (the static landing page + /start/ guide) to
+# indienodes.neocities.org, independently of publish-pages.yml.
+#
+# This is a redundant copy of the same template already served from
+# ring.indienodes.us via GitHub Pages, not a second design -- see
+# docs/neocities-mirror.md. It exists so the ring's landing page still has a
+# home if GitHub Pages (or GitHub itself) is down, which is the actual point
+# of a mirror.
+#
+# Scoped to site/** only, unlike publish-pages.yml's ring.json/schema/**
+# triggers: the mirror carries no copy of the ring data. site/index.html and
+# site/start/index.html link to https://ring.indienodes.us/ring.json,
+# /feed.xml, and /schema/*.json absolutely rather than by root-relative path,
+# so the mirror always reads the live canonical data instead of a snapshot
+# that would go stale the moment a member joins -- Neocities has no build
+# step of its own to regenerate one. That also means this workflow has
+# nothing to do when only members/**.json or ring.json changes.
+#
+# Deploys via the Neocities API (https://neocities.org/api) rather than a
+# third-party GitHub Action, to avoid trusting an unvetted action with the
+# API key. NEOCITIES_API_KEY is a fine-grained key for the indienodes site
+# only (Neocities dashboard -> Settings -> API key), added as a repo secret
+# the same way RING_BUILD_PAT and APP_DISPATCH_PAT are. This workflow can
+# land before that secret exists -- the upload step skips instead of failing
+# so it doesn't turn every site/ change red until the Neocities account is
+# set up.
+
+name: Publish to Neocities
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'site/**'
+      - '.github/workflows/publish-neocities.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: neocities
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Ensure target directories exist on Neocities
+        env:
+          NEOCITIES_API_KEY: ${{ secrets.NEOCITIES_API_KEY }}
+        run: |
+          if [ -z "$NEOCITIES_API_KEY" ]; then
+            echo "NEOCITIES_API_KEY is not set; skipping. Add it once the indienodes.neocities.org site exists." >&2
+            exit 0
+          fi
+          # Soft failure on purpose: Neocities has no idempotent "ensure
+          # directory" call, only create, which errors if the directory is
+          # already there. That's expected on every run after the first and
+          # is not a reason to fail the job.
+          for dir in start images; do
+            curl -sS -H "Authorization: Bearer ${NEOCITIES_API_KEY}" \
+              -F "dirname=${dir}" \
+              https://neocities.org/api/create_directory || true
+          done
+
+      - name: Upload site/ to Neocities
+        env:
+          NEOCITIES_API_KEY: ${{ secrets.NEOCITIES_API_KEY }}
+        run: |
+          if [ -z "$NEOCITIES_API_KEY" ]; then
+            exit 0
+          fi
+          curl -sS -f -H "Authorization: Bearer ${NEOCITIES_API_KEY}" \
+            -F "index.html=@site/index.html" \
+            -F "styles.css=@site/styles.css" \
+            -F "favicon.svg=@site/favicon.svg" \
+            -F "start/index.html=@site/start/index.html" \
+            -F "images/IndieNodes_Logo.webp=@site/images/IndieNodes_Logo.webp" \
+            https://neocities.org/api/upload
