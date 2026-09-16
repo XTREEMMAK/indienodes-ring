@@ -1,5 +1,5 @@
 :root {
-	color-scheme: dark light;
+	color-scheme: dark;
 	--bg: #0f1420;
 	--surface: rgb(23 29 44 / 0.6);
 	--surface-strong: rgb(23 29 44 / 0.88);
@@ -958,44 +958,6 @@ footer a {
 	}
 }
 
-@media (prefers-color-scheme: light) {
-	:root {
-		--bg: #f7f4ee;
-		--surface: rgb(255 255 255 / 0.62);
-		--surface-strong: rgb(255 255 255 / 0.86);
-		--text: #221f1a;
-		--muted: #6b6558;
-		--faint: #9a9384;
-		--border: rgb(204 191 169 / 0.62);
-		--accent: #b5502f;
-		--accent-hover: #963f24;
-		--shadow: 0 24px 70px rgb(86 69 42 / 0.12);
-	}
-	.ambient {
-		background:
-			radial-gradient(circle at 50% -15%, rgb(255 255 255 / 0.86), transparent 42%),
-			linear-gradient(145deg, #f4ede1, #ede2d0 52%, #e7dcc7);
-	}
-	.ambient__glow--warm {
-		background: radial-gradient(circle, rgb(181 80 47 / 0.23), transparent 68%);
-	}
-	.ambient__glow--cool {
-		background: radial-gradient(circle, rgb(45 90 130 / 0.24), transparent 68%);
-	}
-	.ambient__grain {
-		opacity: 0.035;
-	}
-	.button--primary {
-		color: #fff;
-		box-shadow: 0 12px 30px rgb(181 80 47 / 0.24);
-	}
-	.limit-note {
-		background: rgb(181 80 47 / 0.07);
-	}
-	.ring-visual__orbit {
-		border-color: rgb(107 101 88 / 0.3);
-	}
-}
 
 @media (max-width: 900px) {
 	.hero {
