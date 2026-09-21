@@ -89,6 +89,19 @@ npm install
 npm run validate
 ```
 
+### Preview the site
+
+`site/` is plain static HTML and CSS with no build step, so any static file server
+works. Serve it from inside `site/` (the pages use root-absolute paths like
+`/styles.css`, which only resolve when `site/` is the server root):
+
+```bash
+cd site
+python3 -m http.server 8765
+```
+
+Then open <http://localhost:8765/>. The start page is at `/start/`.
+
 ### Common commands
 
 | Command                    | Purpose                                                       |

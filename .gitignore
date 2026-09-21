@@ -1,3 +1,4 @@
 node_modules/
 .member-health-state.json
 feed.xml
+tmp/
