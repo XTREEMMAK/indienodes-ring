@@ -127,19 +127,58 @@ fail regardless of what is behind the `source_url`:
 This is not a judgment about effort or quality. It is the same existence test applied
 to the _creator_ rather than the work: is there someone there.
 
-## Two content rules that are not about quality
+## Content rules that are not about quality
 
-Both are creator representations under EULA §5.4 rather than reviewer taste calls, and
-both are stated on `/join`:
+Revised 2026-09-17 with the content rules published on `/join`. These are creator
+representations rather than reviewer taste calls, and every one of them is stated
+publicly before anyone fills in the form.
 
-- **Authorship.** AI-assisted tools inside a creator's process are fine. Work produced
-  purely by generative systems, where generation stands in for authorship, is not
-  eligible.
+- **Authorship, tested on what a visitor experiences.** Everything a visitor
+  experiences in the featured work must be made by people: the music, art, writing,
+  voice performances, and game design. Tools that edit or clean up human-made work,
+  such as spellcheck, noise reduction, or pitch correction, are fine. Work where
+  generative AI produces the music, images, text, or voices is not eligible. For
+  games, AI-assisted programming is allowed as long as the art, audio, writing, and
+  design are made by people.
+- **Rights.** The creator must hold the rights to the works they feature. Covers,
+  uncleared samples, fan work using characters the creator does not own, and
+  performances owned by a client are not eligible as featured works. This is about
+  the works on the Node, not about everything the creator has ever made.
+- **Adult content.** A member's site may include adult content if it sits behind a
+  clear content warning, and the application asks whether it does. Featured works may
+  be adult content only when the Node is marked `explicit`, which keeps it hidden from
+  the field, Members, Lists, and the widget until a visitor turns explicit content on
+  in Settings. The disclosure is review data and never reaches `ring.json`.
+- **Minors.** Sexual content involving minors, or characters depicted as minors, is
+  never allowed anywhere on a member's website. There is no disclosure that makes this
+  acceptable, and it is the one rule here that is a removal on sight.
 - **Destination-site conduct.** The site a visitor is sent to must not host material
-  attacking or degrading people on the grounds listed in §5.4.
+  attacking or degrading people, including but not limited to racism, antisemitism,
+  sexism, homophobia, transphobia and TERF ideology, xenophobia, ableism, religious
+  hatred, or any other hatred towards minorities.
 
-A reviewer acts on these when they are visible, and otherwise relies on the
-representation, which is what §5.4 is for.
+### What the reviewer actually checks
+
+The submission carries an attestation for authorship, for rights, and for the adult
+content answer (plus a confirmation when the answer is yes). They appear on the
+private review page as their own rows. The checklist items are yes/no:
+
+- The AI attestation is checked.
+- The rights attestation is checked, and no featured work is obviously a cover, fan
+  work using characters the creator does not own, or client work.
+- The adult content disclosure is answered, and if any featured work is adult content,
+  the Node is marked `explicit`.
+- No sexual content involving minors, or characters depicted as minors, is visible on
+  the site.
+
+**AI attestations are trusted at submission.** A Node is removed only on credible
+evidence that featured work is generated, never on suspicion and never on the output
+of a detector. There is no detection tooling, and adding one is not planned: these are
+representations a creator makes, and acting on a guess would decline real work for
+being unusual.
+
+A reviewer acts on the rest of these rules when they are visible, and otherwise relies
+on the representation.
 
 ## Continuing participation
 
@@ -211,3 +250,12 @@ review is "not an editorial quality judgment" remains true because of that
 limit. This document is the detail behind that clause; the EULA is what binds. §5.4
 carries the authorship and destination-site representations, and §8's decline clause
 reaches them by reference.
+
+**The EULA is currently narrower than the rules above, on purpose.** §5.4 excludes work
+"produced purely by generative systems", which is looser than the authorship test here,
+and accepts anything a creator holds "every right and permission" for, which would admit
+licensed covers and client work that the rights rule excludes. It also has no explicit
+minors clause beyond compliance with applicable law. The EULA was left untouched pending
+attorney review (tracked in the app repo's `docs/open-questions.md`). Until that lands,
+the published rules and the attestations on `/join` are what creators agree to, and this
+document is what a reviewer applies.
