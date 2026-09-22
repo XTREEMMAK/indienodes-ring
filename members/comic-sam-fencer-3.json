@@ -1,0 +1,20 @@
+{
+	"id": "comic-sam-fencer-3",
+	"creator": "Sam Fencer <3",
+	"type": "comic",
+	"why": "I'm very passionate about making stupid silly comics and I NEVER hold back!",
+	"tags": ["comedy", "comic"],
+	"pages": [
+		{
+			"image_url": "https://maddox79.neocities.org/art-gallery/PUHSQAE_CH1_coverR.jpg",
+			"caption": "Cover of the first chapter of my comic"
+		}
+	],
+	"thumb_url": "https://maddox79.neocities.org/art-gallery/artwork_MonicaH_pfp.png",
+	"thumb_position": {
+		"x": 50,
+		"y": 50
+	},
+	"source_url": "https://maddox79.neocities.org/",
+	"verification_token": "fa964ce4e32815e36ffe2d6a619606fb"
+}
