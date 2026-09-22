@@ -1,0 +1,22 @@
+{
+	"id": "art-slime-pond",
+	"creator": "slime pond",
+	"type": "art",
+	"why": "various art pieces and webcomic",
+	"tags": ["art", "comedy", "comic", "fantasy"],
+	"artworks": [
+		{
+			"image_url": "https://candyether.space/personal/gallery/bg_fishermint_green.png",
+			"alt": "dragonite and goomy",
+			"year": "2023",
+			"medium": "pixel art"
+		},
+		{
+			"image_url": "https://candyether.space/personal/gallery/sappylitwikpix.png",
+			"alt": "litwick",
+			"medium": "pixel art"
+		}
+	],
+	"source_url": "https://candyether.space/",
+	"verification_token": "be34ef62e6a42aaa35e4b08b19dfeeed"
+}
