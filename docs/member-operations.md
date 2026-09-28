@@ -123,10 +123,17 @@ name="indienode-verification">` tag on the member's own page. It is public by de
   automatically, the first time a member file is built without one. Hand-editing it back-dates
   or forward-dates that entry in [the "what's new" feed](./whats-new-feed.md) without changing
   anything real about when it joined.
+- **`discoverable`** is the creator's own opt-out from rotating discovery (`false` keeps the
+  entry in the ring, the directory and widget navigation, and out of rotation; omitted means
+  `true`). A maintainer honors a request to change it and never sets it on their own
+  judgment: it is a statement about how a creator wants to be seen, not a moderation lever.
+- **`feeds[].verified`** means the feed's own profile links back to `source_url` with a
+  two-way `rel="me"`. It is meant to be set by a check, not by hand, and nothing sets it yet,
+  so leave it out rather than asserting something no one has checked.
 
-Everything else — `creator`, `why`, `tags`, media URLs, and `updated_at` — is ordinary
-content. The creator can change most of it themselves through `/update`; `updated_at`
-specifically is meant to be set deliberately (by `/update`, or by a maintainer editing by
+Everything else — `creator`, `why`, `tags`, `layout`, `feeds` (the `type` and `url`), media
+URLs, and `updated_at` — is ordinary content. The creator can change most of it
+themselves through `/update`; `updated_at` specifically is meant to be set deliberately (by `/update`, or by a maintainer editing by
 hand) whenever an edit is substantive enough to be worth noting, since nothing sets it
 automatically.
 
