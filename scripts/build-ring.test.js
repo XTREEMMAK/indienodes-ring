@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatMemberJson, stampJoinedAt } from './ring-files.js';
+import { formatMemberJson, stampJoinedAt, withGeneratedAt } from './ring-files.js';
 
 /** @param {Record<string, unknown>} entry */
 function member(entry) {
@@ -70,5 +70,30 @@ describe('build-ring: formatMemberJson', () => {
 		assert.deepEqual(JSON.parse(formatted), entry);
 		assert.ok(formatted.includes('\n\t"id"'));
 		assert.ok(!formatted.includes('  '), 'expected tabs, not two-space indentation');
+	});
+});
+
+describe('build-ring: withGeneratedAt', () => {
+	it('adds generated_at without touching version or entries', () => {
+		const document = { version: '1.0', entries: [{ id: 'audio-example' }] };
+		const stamped = withGeneratedAt(document, { now: '2026-09-28T00:00:00.000Z' });
+		assert.deepEqual(stamped, {
+			version: '1.0',
+			entries: [{ id: 'audio-example' }],
+			generated_at: '2026-09-28T00:00:00.000Z'
+		});
+	});
+
+	it('does not mutate the document it was given', () => {
+		const document = { version: '1.0', entries: [] };
+		withGeneratedAt(document, { now: '2026-09-28T00:00:00.000Z' });
+		assert.equal('generated_at' in document, false);
+	});
+
+	it('defaults to the current time when none is given', () => {
+		const before = Date.now();
+		const stamped = withGeneratedAt({ version: '1.0', entries: [] });
+		const stampedMs = new Date(stamped.generated_at).getTime();
+		assert.ok(stampedMs >= before && stampedMs <= Date.now());
 	});
 });

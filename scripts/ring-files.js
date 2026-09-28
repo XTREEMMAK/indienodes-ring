@@ -133,3 +133,20 @@ export function serializeRing(entries) {
 		printWidth: 100
 	});
 }
+
+/**
+ * Stamps `generated_at` onto a *published* copy of the ring document, never
+ * the committed one. `serializeRing` above deliberately carries no such
+ * field, for the reason its own doc comment gives: a wall-clock value in the
+ * committed artifact would make every fresh `ring:build` differ from the
+ * committed file and fail `validate-ring.js`'s byte-for-byte freshness check
+ * against itself. This function is the other half of that split -- called
+ * only by `stamp-generated-at.mjs`, which writes its result to `_site/`
+ * during `publish-pages.yml`, after that freshness check has already run.
+ * @param {{ version: string, entries: unknown[] }} document
+ * @param {{ now?: string }} [options]
+ * @returns {{ version: string, entries: unknown[], generated_at: string }}
+ */
+export function withGeneratedAt(document, { now = new Date().toISOString() } = {}) {
+	return { ...document, generated_at: now };
+}
