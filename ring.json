@@ -34,7 +34,7 @@
 				{
 					"image_url": "https://stephaneperez.net/archives/images/faces/hires/00.jpg",
 					"alt": "Memory-sculpture featuring the faces and voices of various people floating in an explorable 3D space.",
-					"title": "faces",
+					"title": "Faces",
 					"year": "2024",
 					"medium": "website",
 					"external_url": "https://somanyfaces.in/"
@@ -42,17 +42,17 @@
 				{
 					"image_url": "https://stephaneperez.net/archives/images/thesearch/hires/00.jpg",
 					"alt": "Performance. The artist turns the venue into a spaceship that he navigates with a futuristic console.",
-					"title": "the search",
+					"title": "The Search",
 					"year": "2025",
 					"medium": "performance using a custom website, video-chat, and a console made of cardboard & colored foil",
 					"external_url": "https://stephaneperez.net/archives/thesearch"
 				},
 				{
 					"image_url": "https://stephaneperez.net/archives/images/otamasketch/hires/09.jpg",
-					"alt": "Composition of three videos separated by colored lines a star-shaped cursor moving across it.",
+					"alt": "Composition of three videos separated by colored lines; a star-shaped cursor moving across it.",
 					"title": "☆OTAMASKETCH☆",
 					"year": "2026",
-					"medium": "openFrameworks (C++, glsl), video, Otamatone",
+					"medium": "openFrameworks (C++, glsl), Video, Otamatone",
 					"external_url": "https://stephaneperez.net/archives/otamasketch"
 				}
 			],
