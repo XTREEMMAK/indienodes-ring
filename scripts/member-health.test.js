@@ -64,7 +64,8 @@ describe('member health link collection', () => {
 				pages: [{ image_url: 'https://cdn.example/page.png' }],
 				artworks: [
 					{ image_url: 'https://cdn.example/art.png', external_url: 'https://cdn.example/more' }
-				]
+				],
+				feeds: [{ type: 'rss', url: 'https://creator.example/feed.xml' }]
 			},
 			'comic-example.json'
 		);
@@ -78,9 +79,24 @@ describe('member health link collection', () => {
 				'tracks[0].media_url',
 				'pages[0].image_url',
 				'artworks[0].image_url',
-				'artworks[0].external_url'
+				'artworks[0].external_url',
+				'feeds[0].url'
 			]
 		);
+	});
+
+	it('carries no verification token for a feed link, like every other media link', () => {
+		const [feedLink] = collectMemberLinks(
+			{
+				id: 'audio-example',
+				source_url: 'https://creator.example',
+				verification_token: 'token-123',
+				feeds: [{ type: 'rss', url: 'https://creator.example/feed.xml' }]
+			},
+			'audio-example.json'
+		).filter((link) => link.field === 'feeds[0].url');
+		assert.equal(feedLink.kind, 'media');
+		assert.equal(feedLink.verificationToken, '');
 	});
 
 	it('deduplicates a URL while retaining every reference', () => {
