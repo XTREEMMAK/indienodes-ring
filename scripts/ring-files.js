@@ -127,12 +127,15 @@ export const RING_VERSION = '1.0';
  * @param {Record<string, unknown>[]} entries
  */
 export function serializeRing(entries) {
-	return format(JSON.stringify({ version: RING_VERSION, entries }), {
-		parser: 'json',
-		useTabs: true,
-		printWidth: 100
-	});
+	return format(JSON.stringify({ version: RING_VERSION, entries }), RING_JSON_FORMAT);
 }
+
+/** The one Prettier configuration ring.json is written with, committed or published. */
+const RING_JSON_FORMAT = /** @type {const} */ ({
+	parser: 'json',
+	useTabs: true,
+	printWidth: 100
+});
 
 /**
  * Stamps `generated_at` onto a *published* copy of the ring document, never
@@ -149,4 +152,21 @@ export function serializeRing(entries) {
  */
 export function withGeneratedAt(document, { now = new Date().toISOString() } = {}) {
 	return { ...document, generated_at: now };
+}
+
+/**
+ * The published copy of ring.json: the document with `generated_at` stamped,
+ * written with the same Prettier settings as the committed file.
+ *
+ * That last part is not cosmetic. indienodes-app mirrors the published bytes
+ * verbatim and its CI runs `prettier --check` over the mirror, so a copy
+ * written with plain `JSON.stringify` (tag arrays expanded onto separate
+ * lines) failed lint there and blocked its image build. The published file
+ * must differ from the committed one by the `generated_at` line and nothing
+ * else.
+ * @param {{ version: string, entries: unknown[] }} document
+ * @param {{ now?: string }} [options]
+ */
+export function serializePublishedRing(document, options) {
+	return format(JSON.stringify(withGeneratedAt(document, options)), RING_JSON_FORMAT);
 }

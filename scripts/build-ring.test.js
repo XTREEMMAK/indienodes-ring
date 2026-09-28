@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatMemberJson, stampJoinedAt, withGeneratedAt } from './ring-files.js';
+import {
+	formatMemberJson,
+	serializePublishedRing,
+	serializeRing,
+	stampJoinedAt,
+	withGeneratedAt
+} from './ring-files.js';
 
 /** @param {Record<string, unknown>} entry */
 function member(entry) {
@@ -95,5 +101,34 @@ describe('build-ring: withGeneratedAt', () => {
 		const stamped = withGeneratedAt({ version: '1.0', entries: [] });
 		const stampedMs = new Date(stamped.generated_at).getTime();
 		assert.ok(stampedMs >= before && stampedMs <= Date.now());
+	});
+});
+
+describe('build-ring: serializePublishedRing', () => {
+	// Sized like a real ring: a document short enough to fit on one line is
+	// legitimately wrapped differently once generated_at is added, which says
+	// nothing about the published copy's formatting.
+	const entries = ['audio-one', 'comic-two', 'art-three'].map((id) => ({
+		id,
+		creator: `Creator of ${id}`,
+		why: 'A sentence long enough that each entry needs several lines of its own.',
+		tags: ['ambient', 'field-recording']
+	}));
+	const now = '2026-09-28T00:00:00.000Z';
+
+	it('is the committed serialization plus a generated_at line, and nothing else', async () => {
+		const committed = await serializeRing(entries);
+		const published = await serializePublishedRing({ version: '1.0', entries }, { now });
+		assert.equal(
+			published.replace(/,\n\t"generated_at": "[^"]*"/, ''),
+			committed,
+			'the published copy must not differ from the committed one in formatting'
+		);
+		assert.ok(published.includes(`"generated_at": "${now}"`));
+	});
+
+	it('keeps short arrays compact, as the committed file does', async () => {
+		const published = await serializePublishedRing({ version: '1.0', entries }, { now });
+		assert.ok(published.includes('"tags": ["ambient", "field-recording"]'));
 	});
 });

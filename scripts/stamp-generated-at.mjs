@@ -9,7 +9,7 @@
 //   node scripts/stamp-generated-at.mjs _site/ring.json
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { RING_PATH, withGeneratedAt } from './ring-files.js';
+import { RING_PATH, serializePublishedRing } from './ring-files.js';
 
 const outPath = process.argv[2];
 if (!outPath) {
@@ -18,5 +18,5 @@ if (!outPath) {
 }
 
 const document = JSON.parse(readFileSync(RING_PATH, 'utf8'));
-writeFileSync(outPath, JSON.stringify(withGeneratedAt(document), null, '\t') + '\n');
+writeFileSync(outPath, await serializePublishedRing(document));
 console.log(`wrote ${outPath} with generated_at stamped at publish time.`);
