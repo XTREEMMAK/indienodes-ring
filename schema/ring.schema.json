@@ -199,6 +199,41 @@
 				]
 			}
 		},
+		"feeds": {
+			"type": "array",
+			"maxItems": 10,
+			"description": "The creator's own feeds elsewhere -- RSS, Atom, a JSON Feed, Bluesky, Mastodon, YouTube, a podcast feed, or another kind named by a free-form `type`. Additive and entirely optional: a member with none is exactly as supported as before this field existed, discoverable by source_url alone. A reader client (indienodes-app's own player, or a third party like YipDen) uses this to follow a creator's ongoing output rather than only the sampler featured here. Capped at 10 as a sanity bound, the same reasoning as tags's own cap, not a product target.",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["type", "url"],
+				"properties": {
+					"type": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 40,
+						"description": "rss, atom, jsonfeed, bluesky, mastodon, youtube, and podcast are the kinds a reader is expected to label distinctly; any other value is accepted and can be rendered generically, matching this project's posture of never closing a set a future feed kind might need to join."
+					},
+					"url": {
+						"$ref": "#/$defs/externalMediaUrl"
+					},
+					"verified": {
+						"type": "boolean",
+						"description": "Whether this feed's own profile links back to source_url with a two-way rel=\"me\". Self-declared like every other field here; unverified is the default and is not a rejection, the same posture explicit and discoverable below take."
+					}
+				}
+			}
+		},
+		"discoverable": {
+			"type": "boolean",
+			"default": true,
+			"description": "A creator's own opt-out from randomized or rotating discovery surfaces (false hides the Node from those) while it stays in the ring exactly as before: reachable by direct link, the member directory, and Previous/Next/Random widget navigation. Omitted means true. Never set by a reviewer, by link health, or by any ranking -- this is the creator's own switch, the same posture that nothing about a member's own site or presence here changes without their say."
+		},
+		"layout": {
+			"type": "string",
+			"enum": ["mobile-friendly", "desktop-first"],
+			"description": "Self-declared hint about how the creator's own source_url is best experienced. Optional and presentational only -- no client is required to act on it, and unlike type or form it never gates validation or playback."
+		},
 		"thumb_url": {
 			"$ref": "#/$defs/externalMediaUrl",
 			"description": "Cover or representative image for the entry: album art, a header image, a screenshot. Required for game entries (see allOf below); optional and encouraged for every other type, where the field view uses it as the card's background instead of a flat color wash. Comics and Art fall back to their first page or artwork when this is absent."

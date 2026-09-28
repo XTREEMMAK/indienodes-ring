@@ -66,6 +66,11 @@ function urlsIn(entry) {
 			found.push({ field: `excerpts[${i}].audio_url`, url: excerpt.audio_url });
 		}
 	}
+	for (const [i, feed] of (entry?.feeds ?? []).entries()) {
+		if (typeof feed?.url === 'string') {
+			found.push({ field: `feeds[${i}].url`, url: feed.url });
+		}
+	}
 	return found;
 }
 

@@ -105,6 +105,9 @@ export function collectMemberLinks(entry, file) {
 		add(artwork?.image_url, 'artworks[' + index + '].image_url', 'media');
 		add(artwork?.external_url, 'artworks[' + index + '].external_url', 'media');
 	}
+	for (const [index, feed] of (entry.feeds || []).entries()) {
+		add(feed?.url, 'feeds[' + index + '].url', 'media');
+	}
 	return links;
 }
 
