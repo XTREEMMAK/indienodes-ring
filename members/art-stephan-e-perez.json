@@ -7,7 +7,7 @@
 	"artworks": [
 		{
 			"image_url": "https://stephaneperez.net/archives/images/faces/hires/00.jpg",
-			"alt": "Memory-sculpture featuring the faces and voices of various people floating in an explorable 3D space. Visitors can contribute their own face and voice and become part of the work.*\n\n*data is not used for anything besides the actual artwork and any screenshots thereof",
+			"alt": "Memory-sculpture featuring the faces and voices of various people floating in an explorable 3D space.",
 			"title": "faces",
 			"year": "2024",
 			"medium": "website",
@@ -15,7 +15,7 @@
 		},
 		{
 			"image_url": "https://stephaneperez.net/archives/images/thesearch/hires/00.jpg",
-			"alt": "Performance. The artist turns the venue into a spaceship that he navigates with a futuristic console. The universe shown on the screen consists of words instead of stars or planets. He communicates with someone on the viewscreen and plays some music on a strange instrument.",
+			"alt": "Performance. The artist turns the venue into a spaceship that he navigates with a futuristic console.",
 			"title": "the search",
 			"year": "2025",
 			"medium": "performance using a custom website, video-chat, and a console made of cardboard & colored foil",
@@ -23,7 +23,7 @@
 		},
 		{
 			"image_url": "https://stephaneperez.net/archives/images/otamasketch/hires/09.jpg",
-			"alt": "Composition of three videos separated by colored lines a star-shaped cursor moving across it. The three videos feature Donald Trump, Kristi Noem, and the execution of Alex Pretti by ICE (the U.S.' immigration police force) officers. The colorful interface and rhythm-tracker at the top are features of the OTAMASKETCH, an audio-visual educational tool for young patriots-in-the-making using the Otamatone (a Japanese musical instrument in the shape of a tadpole) as an interface to shape, reveal, and conceal video archives.",
+			"alt": "Composition of three videos separated by colored lines a star-shaped cursor moving across it.",
 			"title": "☆OTAMASKETCH☆",
 			"year": "2026",
 			"medium": "openFrameworks (C++, glsl), video, Otamatone",
