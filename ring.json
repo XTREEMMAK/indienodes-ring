@@ -2,6 +2,41 @@
 	"version": "1.0",
 	"entries": [
 		{
+			"id": "art-e0nbreak",
+			"creator": "E0NBREAK",
+			"type": "art",
+			"why": "E0NBREAK is a personal creative website w/ various storytelling projects!",
+			"tags": [
+				"art",
+				"animation",
+				"blog",
+				"interdisciplinary",
+				"internet art",
+				"new media",
+				"experimental",
+				"portfolio",
+				"storytelling",
+				"oc",
+				"original character",
+				"project"
+			],
+			"artworks": [
+				{
+					"image_url": "https://cdn.imgchest.com/files/b2f73339ce7a.png",
+					"alt": "The creator Blanki having their OC's spinning around their head against a space background, the text \"Becoming who I'm meant to be\" is accompanied.",
+					"title": "Becoming Who I'm Meant To Be",
+					"year": "2025",
+					"medium": "Digital"
+				}
+			],
+			"thumb_url": "https://cdn.imgchest.com/files/4baa82060c87.png",
+			"thumb_position": { "x": 50, "y": 50 },
+			"layout": "desktop-first",
+			"source_url": "https://e0nbreak.com/",
+			"verification_token": "ea8699ba63c78d250b49f016a1b41694",
+			"joined_at": "2026-10-02T05:58:11.354Z"
+		},
+		{
 			"id": "art-slime-pond",
 			"creator": "Slime Pond",
 			"type": "art",
