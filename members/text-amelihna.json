@@ -1,0 +1,28 @@
+{
+	"id": "text-amelihna",
+	"creator": "Amelihna",
+	"type": "text",
+	"why": "We're curious creatures who adore the world and make art about it!",
+	"tags": ["plural", "art", "writing", "blogging", "fantasy", "high fantasy"],
+	"excerpts": [
+		{
+			"title": "regarding_my_newly_discovered_alterhumanity",
+			"text": "<p>I am aware that elaborating on my nonhuman perception of myself will make others less inclined to take me seriously, to take me at my word. I do not care. I wish to be honest. I wish to make others feel less alone. Therefore what others think of me is irrelevant.</p>"
+		}
+	],
+	"thumb_url": "https://amaleihna.neocities.org/Images/World%20of%20Amaleihna.png",
+	"thumb_position": {
+		"x": 50,
+		"y": 50
+	},
+	"feeds": [
+		{
+			"type": "rss",
+			"url": "https://amaleihna.neocities.org/RSS_Feed.xml"
+		}
+	],
+	"layout": "desktop-first",
+	"source_url": "https://amaleihna.neocities.org/",
+	"verification_token": "8a2e6d05800495932316abebf24b8727",
+	"joined_at": "2026-10-06T20:13:59.663Z"
+}
