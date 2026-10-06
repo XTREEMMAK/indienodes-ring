@@ -9,6 +9,73 @@ const ajv = new Ajv2020({ allErrors: true });
 addFormats(ajv);
 const validate = ajv.compile(schema);
 
+/** @param {object} extra */
+function entry(extra) {
+	return {
+		id: 'audio-example',
+		creator: 'Example Creator',
+		type: 'audio',
+		form: 'music',
+		why: 'One-line framing',
+		source_url: 'https://example.com/',
+		tags: ['example'],
+		verification_token: 'abc123',
+		joined_at: '2026-09-01T00:00:00.000Z',
+		...extra
+	};
+}
+
+test('feeds accepts a known type, an unknown type, and an unverified feed', () => {
+	assert.equal(
+		validate(
+			entry({
+				feeds: [
+					{ type: 'rss', url: 'https://example.com/feed.xml', verified: true },
+					{ type: 'bluesky', url: 'https://bsky.app/profile/example' },
+					{ type: 'gemini-capsule', url: 'https://example.com/feed.gmi' }
+				]
+			})
+		),
+		true
+	);
+});
+
+test('feeds rejects a non-https url, a rehosted url, and a feed missing url', () => {
+	assert.equal(
+		validate(entry({ feeds: [{ type: 'rss', url: 'http://example.com/feed.xml' }] })),
+		false
+	);
+	assert.equal(
+		validate(entry({ feeds: [{ type: 'rss', url: 'https://ring.indienodes.us/feed.xml' }] })),
+		false
+	);
+	assert.equal(validate(entry({ feeds: [{ type: 'rss' }] })), false);
+});
+
+test('feeds is capped at 10', () => {
+	const feeds = Array.from({ length: 11 }, (_, i) => ({
+		type: 'rss',
+		url: `https://example.com/feed-${i}.xml`
+	}));
+	assert.equal(validate(entry({ feeds })), false);
+});
+
+test('discoverable accepts true or false and rejects a non-boolean', () => {
+	assert.equal(validate(entry({ discoverable: true })), true);
+	assert.equal(validate(entry({ discoverable: false })), true);
+	assert.equal(validate(entry({ discoverable: 'no' })), false);
+});
+
+test('layout accepts only the two declared values', () => {
+	assert.equal(validate(entry({ layout: 'mobile-friendly' })), true);
+	assert.equal(validate(entry({ layout: 'desktop-first' })), true);
+	assert.equal(validate(entry({ layout: 'responsive' })), false);
+});
+
+test('an entry with none of the three additive fields is still valid', () => {
+	assert.equal(validate(entry({})), true);
+});
+
 /** @param {number} count @param {string | null} caption */
 function pages(count, caption = 'Full piece, 24 x 36 in') {
 	return Array.from({ length: count }, (_, i) => ({
@@ -18,7 +85,7 @@ function pages(count, caption = 'Full piece, 24 x 36 in') {
 }
 
 /** @param {string} type @param {object} extra */
-function entry(type, extra) {
+function typedEntry(type, extra) {
 	return {
 		id: `${type}-example`,
 		creator: 'Example Maker',
@@ -33,22 +100,22 @@ function entry(type, extra) {
 }
 
 test('craft accepts one to five captioned pages', () => {
-	assert.equal(validate(entry('craft', { pages: pages(1) })), true);
-	assert.equal(validate(entry('craft', { pages: pages(5) })), true);
+	assert.equal(validate(typedEntry('craft', { pages: pages(1) })), true);
+	assert.equal(validate(typedEntry('craft', { pages: pages(5) })), true);
 });
 
 test('craft rejects six pages, zero pages, or no pages', () => {
-	assert.equal(validate(entry('craft', { pages: pages(6) })), false);
-	assert.equal(validate(entry('craft', { pages: [] })), false);
-	assert.equal(validate(entry('craft', {})), false);
+	assert.equal(validate(typedEntry('craft', { pages: pages(6) })), false);
+	assert.equal(validate(typedEntry('craft', { pages: [] })), false);
+	assert.equal(validate(typedEntry('craft', {})), false);
 });
 
 test('craft requires a non-empty caption on every page', () => {
-	assert.equal(validate(entry('craft', { pages: pages(2, null) })), false);
-	assert.equal(validate(entry('craft', { pages: pages(2, '') })), false);
+	assert.equal(validate(typedEntry('craft', { pages: pages(2, null) })), false);
+	assert.equal(validate(typedEntry('craft', { pages: pages(2, '') })), false);
 });
 
 test('comic stays capped at three pages and keeps optional captions', () => {
-	assert.equal(validate(entry('comic', { pages: pages(3, null) })), true);
-	assert.equal(validate(entry('comic', { pages: pages(4) })), false);
+	assert.equal(validate(typedEntry('comic', { pages: pages(3, null) })), true);
+	assert.equal(validate(typedEntry('comic', { pages: pages(4) })), false);
 });

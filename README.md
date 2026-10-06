@@ -59,6 +59,12 @@ members/*.json ──> build-ring.js ──> ring.json ──> ring.indienodes.u
 Do not edit it by hand. Change the corresponding file in `members/`, then rebuild the
 aggregate.
 
+The published copy at [ring.indienodes.us](https://ring.indienodes.us) also carries an
+optional `generated_at` timestamp, stamped when it is published. It is deliberately absent
+from the committed `ring.json`: `npm run validate` compares a fresh rebuild against that
+file byte for byte, so a wall-clock value there would make every build fail against itself.
+See `scripts/stamp-generated-at.mjs` and `publish-pages.yml`.
+
 ## Repository layout
 
 ```text

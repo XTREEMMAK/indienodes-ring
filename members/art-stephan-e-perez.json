@@ -1,0 +1,41 @@
+{
+	"id": "art-stephan-e-perez",
+	"creator": "Stephan E. Perez",
+	"type": "art",
+	"why": "Internet art, performance, new media, musically-controlled video art",
+	"tags": ["internet art", "performance art", "new media", "interdisciplinary", "experimental"],
+	"artworks": [
+		{
+			"image_url": "https://stephaneperez.net/archives/images/faces/hires/00.jpg",
+			"alt": "Memory-sculpture featuring the faces and voices of various people floating in an explorable 3D space.",
+			"title": "Faces",
+			"year": "2024",
+			"medium": "website",
+			"external_url": "https://somanyfaces.in/"
+		},
+		{
+			"image_url": "https://stephaneperez.net/archives/images/thesearch/hires/00.jpg",
+			"alt": "Performance. The artist turns the venue into a spaceship that he navigates with a futuristic console.",
+			"title": "The Search",
+			"year": "2025",
+			"medium": "performance using a custom website, video-chat, and a console made of cardboard & colored foil",
+			"external_url": "https://stephaneperez.net/archives/thesearch"
+		},
+		{
+			"image_url": "https://stephaneperez.net/archives/images/otamasketch/hires/09.jpg",
+			"alt": "Composition of three videos separated by colored lines; a star-shaped cursor moving across it.",
+			"title": "☆OTAMASKETCH☆",
+			"year": "2026",
+			"medium": "openFrameworks (C++, glsl), Video, Otamatone",
+			"external_url": "https://stephaneperez.net/archives/otamasketch"
+		}
+	],
+	"thumb_url": "https://stephaneperez.net/archives/images/lettertomom/hires/00.jpg",
+	"thumb_position": {
+		"x": 50,
+		"y": 50
+	},
+	"source_url": "https://stephaneperez.net",
+	"verification_token": "64a8e8587dba2b5c843bfdd7a0929195",
+	"joined_at": "2026-09-27T20:21:00.888Z"
+}

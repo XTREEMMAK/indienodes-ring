@@ -74,9 +74,27 @@ robots handling, depth and politeness budgets, and a far wider address-screening
 surface than the single-URL model above, and "absent after N pages" would still not
 be proof of absence.
 
-### The site root fallback
+### The ring page and site root fallbacks
 
-The single exception is the site's home page. When the source page carries no
+There are two exceptions, tried in this order.
+
+**The member's ring page.** A member can give `ring_page_url`: a page on the same
+site as `source_url` (`www.` aside) where they keep the ring, such as a links or
+webrings page. Some members have no site-wide footer and keep every webring on one
+page, so neither the page they submitted nor `/` carries it. When the source page
+carries no passing embed, the checker reads that page first, under every rule listed
+for the root below, and reports a pass there with `participationUrl` naming it.
+
+Same site is what makes this safe. A badge or `/go/random` link carries no
+`site-id`, so if `ring_page_url` could name any page, a member could point at a
+stranger's page that already shows the ring and pass without ever adding it.
+`validate-ring.js` rejects an off-site or `pages.kjnet.us` value in the member file,
+and `isSameSiteRingPage` in `member-health.js` checks it again before fetching. A
+ring page that redirects to another site is not counted. The submission form and
+the n8n intake and approval steps in `indienodes-app` apply the same rule.
+
+**The site root.** When neither the source page nor the ring page carries a passing
+embed, the checker looks at the site's home page. When the source page carries no
 passing embed, the checker fetches `/` on the same origin as the page's final URL,
 and keeps whichever result is better (a passing embed, then a wrong `site-id`, then
 an indeterminate read, then nothing). A pass found there is reported `healthy` with
@@ -126,11 +144,11 @@ member's only presence and have nothing to link out to. Disable with
 Participation produces three distinct reasons, because "we did not find it" and
 "there is nothing there" are different claims and only one of them is ever certain.
 
-| Reason                             | What it means                                                                                                                     | Usual fix                                          |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `ring_widget_site_id_unmatched`    | The page (or its site root) carries a ring embed — script widget or `/embed-frame` iframe — whose `site-id` matches no member id. | Tell the member to correct one attribute.          |
-| `ring_participation_indeterminate` | Nothing was found, **and** the page hit the read limit before the end.                                                            | Open the page and look. The checker does not know. |
-| `ring_participation_missing`       | Nothing was found in a page read to completion.                                                                                   | Ask the member to add a ring link.                 |
+| Reason                             | What it means                                                                                                                                  | Usual fix                                          |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `ring_widget_site_id_unmatched`    | The page (or its ring page or site root) carries a ring embed — script widget or `/embed-frame` iframe — whose `site-id` matches no member id. | Tell the member to correct one attribute.          |
+| `ring_participation_indeterminate` | Nothing was found, **and** the page hit the read limit before the end.                                                                         | Open the page and look. The checker does not know. |
+| `ring_participation_missing`       | Nothing was found in a page read to completion.                                                                                                | Ask the member to add a ring link.                 |
 
 The most likely of the three is the first, and it is largely our own doing. The
 `/widget` page hands out the snippet with `site-id="your-ring-entry-id"`, a

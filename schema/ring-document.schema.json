@@ -15,6 +15,11 @@
 		"entries": {
 			"type": "array",
 			"items": { "$ref": "https://ring.indienodes.us/schema/ring-entry.json" }
+		},
+		"generated_at": {
+			"type": "string",
+			"format": "date-time",
+			"description": "When this document was published, stamped at publish time by this repo's own GitHub Pages workflow. Deliberately absent from the committed ring.json: validate-ring.js compares a fresh rebuild against that file byte-for-byte, and a wall-clock value would make every build differ from itself and fail that check. See scripts/ring-files.js's withGeneratedAt and .github/workflows/publish-pages.yml, and schema/ring.schema.json's own `joined_at`/`updated_at` for the same build-vs-publish-time distinction applied to one entry instead of the document."
 		}
 	}
 }
