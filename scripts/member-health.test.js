@@ -21,6 +21,7 @@ import {
 	collectMemberLinks,
 	extractDeepLinkUrl,
 	groupLinksByUrl,
+	isSameSiteRingPage,
 	hasVerificationToken,
 	isPublicIpAddress,
 	LinkHealthError,
@@ -632,6 +633,198 @@ describe('member health: site root fallback for participation', () => {
 		});
 		assert.equal(result.reason, 'verification_token_missing');
 		assert.equal(result.participationUrl, 'https://creator.example/');
+	});
+});
+
+describe('member health: ring page fallback for participation', () => {
+	const ringLink = '<footer><a href="https://app.indienodes.us/go/random">IndieNodes</a></footer>';
+
+	/** @param {string} ringPageUrl @param {string} [url] */
+	function withRingPage(ringPageUrl, url = 'https://creator.example/work') {
+		return groupLinksByUrl([
+			collectMemberLinks(
+				{
+					id: 'audio-example',
+					source_url: url,
+					ring_page_url: ringPageUrl,
+					verification_token: 'token-123'
+				},
+				'audio-example.json'
+			)
+		])[0];
+	}
+
+	/** @param {Record<string, () => Response>} routes keyed by full URL */
+	function routed(routes) {
+		return mock.fn(async (url) => {
+			const route = routes[String(url)];
+			return route ? route() : new Response('not found', { status: 404 });
+		});
+	}
+
+	it('passes a member whose embed is only on their ring page', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/webrings': () => new Response(ringLink),
+			'https://creator.example/': () => new Response('<p>Home.</p>')
+		});
+		const result = await probeLink(withRingPage('https://creator.example/webrings'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.participationUrl, 'https://creator.example/webrings');
+		// Found on the ring page, so the root is never fetched.
+		assert.equal(fetchImpl.mock.callCount(), 2);
+	});
+
+	it('still falls back to the site root when the ring page has no embed', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/webrings': () => new Response('<p>Moved.</p>'),
+			'https://creator.example/': () => new Response(ringLink)
+		});
+		const result = await probeLink(withRingPage('https://creator.example/webrings'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(result.participationUrl, 'https://creator.example/');
+	});
+
+	it('names every page it tried when none carries an embed', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/': () => new Response('<p>Home.</p>')
+		});
+		const result = await probeLink(withRingPage('https://creator.example/webrings'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.match(result.detail, /The ring page \(https:\/\/creator\.example\/webrings\)/);
+		assert.match(result.detail, /could not be read: http 404/);
+		assert.match(result.detail, /The site root \(https:\/\/creator\.example\/\) was also checked/);
+	});
+
+	it('says where a wrong site-id was found', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/webrings': () =>
+				new Response('<indienode-widget site-id="your-ring-entry-id"></indienode-widget>'),
+			'https://creator.example/': () => new Response('<p>Home.</p>')
+		});
+		const result = await probeLink(withRingPage('https://creator.example/webrings'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_widget_site_id_unmatched');
+		assert.match(result.detail, /^The ring page \(https:\/\/creator\.example\/webrings\)/);
+	});
+
+	it('never reads an off-site ring page, even one carrying the ring', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://someone-else.example/webrings': () => new Response(ringLink),
+			'https://creator.example/': () => new Response('<p>Home.</p>')
+		});
+		const result = await probeLink(withRingPage('https://someone-else.example/webrings'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.ok(
+			fetchImpl.mock.calls.every(({ arguments: [url] }) => !String(url).includes('someone-else')),
+			'the off-site ring page was requested'
+		);
+	});
+
+	it('does not count a ring page that redirects to another site', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/webrings': () =>
+				new Response('', { status: 302, headers: { location: 'https://linkinbio.example/me' } }),
+			'https://linkinbio.example/me': () => new Response(ringLink),
+			'https://creator.example/': () => new Response('<p>Home.</p>')
+		});
+		const result = await probeLink(withRingPage('https://creator.example/webrings'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'ring_participation_missing');
+		assert.match(result.detail, /The ring page .* redirects off-site/);
+	});
+
+	it('does not fetch the ring page when the submitted page already participates', async () => {
+		const fetchImpl = routed({ 'https://creator.example/work': () => new Response(ringLink) });
+		const result = await probeLink(withRingPage('https://creator.example/webrings'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.outcome, 'healthy');
+		assert.equal(fetchImpl.mock.callCount(), 1);
+	});
+
+	it('does not fetch the root twice when the ring page is the root', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work.</p>'),
+			'https://creator.example/': () => new Response('<p>Home.</p>')
+		});
+		await probeLink(withRingPage('https://creator.example/'), {
+			checkParticipation: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(fetchImpl.mock.callCount(), 2);
+	});
+
+	it('still checks the verification token on the submitted page, not the ring page', async () => {
+		const fetchImpl = routed({
+			'https://creator.example/work': () => new Response('<p>Work, token removed.</p>'),
+			'https://creator.example/webrings': () =>
+				new Response(ringLink + '<meta name="indienode-verification" content="token-123">')
+		});
+		const result = await probeLink(withRingPage('https://creator.example/webrings'), {
+			checkParticipation: true,
+			checkTokens: true,
+			fetchImpl,
+			lookupImpl: publicLookup
+		});
+		assert.equal(result.reason, 'verification_token_missing');
+		assert.equal(result.participationUrl, 'https://creator.example/webrings');
+	});
+});
+
+describe('member health: isSameSiteRingPage', () => {
+	const source = 'https://creator.example/work';
+	for (const [url, expected] of [
+		['https://creator.example/webrings', true],
+		['https://www.creator.example/links', true],
+		['https://blog.creator.example/webrings', false],
+		['https://creator.example.evil.example/', false],
+		['https://someone-else.example/webrings', false],
+		['http://creator.example/webrings', false],
+		['https://user:pass@creator.example/', false],
+		['https://pages.kjnet.us/someone/', false],
+		['not a url', false]
+	]) {
+		it(`${expected ? 'accepts' : 'rejects'} ${url}`, () => {
+			assert.equal(isSameSiteRingPage(url, source), expected);
+		});
+	}
+
+	it('rejects a ring page on the generated-site host even beside a generated source', () => {
+		assert.equal(
+			isSameSiteRingPage('https://pages.kjnet.us/someone/', 'https://pages.kjnet.us/jewel/'),
+			false
+		);
 	});
 });
 

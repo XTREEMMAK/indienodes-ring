@@ -61,6 +61,13 @@
 			"pattern": "^https://",
 			"maxLength": 2000
 		},
+		"ring_page_url": {
+			"type": "string",
+			"format": "uri",
+			"pattern": "^https://",
+			"maxLength": 2000,
+			"description": "Optional. A page on the same site as source_url that carries the member's ring embed, for members who keep it on a links or webrings page rather than on source_url or their home page. Member link health looks here as well as at source_url and its site root. Same site means the same hostname ignoring a leading www.; a JSON Schema pattern cannot compare two fields, so that rule is enforced by the submission form, the n8n intake and approval, validate-ring.js and member-health.js. Never rendered by the app."
+		},
 		"tags": {
 			"type": "array",
 			"minItems": 1,
