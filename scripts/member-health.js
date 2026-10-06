@@ -31,6 +31,7 @@ export const PLAYER_ORIGIN = 'https://app.indienodes.us';
  * @property {string} memberFile
  * @property {string} field
  * @property {string} verificationToken
+ * @property {string} [ringPageUrl] source links only: the member's `ring_page_url`
  */
 
 /**
@@ -38,6 +39,7 @@ export const PLAYER_ORIGIN = 'https://app.indienodes.us';
  * @property {string} url
  * @property {boolean} includesSource
  * @property {Set<string>} verificationTokens
+ * @property {Set<string>} ringPageUrls
  * @property {MemberLink[]} references
  */
 
@@ -87,7 +89,11 @@ export function collectMemberLinks(entry, file) {
 			memberId: entry.id || file.replace(/\.json$/i, ''),
 			memberFile: file,
 			field,
-			verificationToken: kind === 'source' ? entry.verification_token || '' : ''
+			verificationToken: kind === 'source' ? entry.verification_token || '' : '',
+			ringPageUrl:
+				kind === 'source' && typeof entry.ring_page_url === 'string'
+					? entry.ring_page_url.trim()
+					: ''
 		});
 	};
 
@@ -120,6 +126,7 @@ export function groupLinksByUrl(linkLists) {
 		if (existing) {
 			existing.references.push(link);
 			if (link.verificationToken) existing.verificationTokens.add(link.verificationToken);
+			if (link.ringPageUrl) existing.ringPageUrls.add(link.ringPageUrl);
 			if (link.kind === 'source') existing.includesSource = true;
 			continue;
 		}
@@ -127,6 +134,7 @@ export function groupLinksByUrl(linkLists) {
 			url: link.url,
 			includesSource: link.kind === 'source',
 			verificationTokens: new Set(link.verificationToken ? [link.verificationToken] : []),
+			ringPageUrls: new Set(link.ringPageUrl ? [link.ringPageUrl] : []),
 			references: [link]
 		});
 	}
@@ -598,6 +606,35 @@ function siteHostname(hostname) {
 }
 
 /**
+ * Whether `ringPageUrl` may stand in for `sourceUrl` when looking for the
+ * member's ring embed: an https page on the same site, `www.` aside, and not
+ * on the shared generated-site host. Same site is the security control. A
+ * badge or `/go/random` link carries no site-id, so an off-site page anyone
+ * already runs the ring on would otherwise pass for a member who never added
+ * it. Applied by validate-ring.js to the member file, and again here, after
+ * redirects, to the page actually read.
+ * @param {string} ringPageUrl
+ * @param {string} sourceUrl
+ */
+export function isSameSiteRingPage(ringPageUrl, sourceUrl) {
+	let ringPage;
+	let source;
+	try {
+		ringPage = new URL(ringPageUrl);
+		source = new URL(sourceUrl);
+	} catch {
+		return false;
+	}
+	return (
+		ringPage.protocol === 'https:' &&
+		!ringPage.username &&
+		!ringPage.password &&
+		ringPage.hostname !== DEEP_LINK_HOSTNAME &&
+		siteHostname(ringPage.hostname) === siteHostname(source.hostname)
+	);
+}
+
+/**
  * Whether a link is an audio track, the one kind of media whose CORS header
  * matters: the player can only analyse a track for the reactive background
  * when its host sends one. Images and pages load either way.
@@ -676,49 +713,72 @@ export async function probeLink(link, options = {}) {
 		];
 		let participation = pageParticipation(body, memberIds, checkedUrl.href);
 		let participationUrl = checkedUrl.href;
-		let rootNote = '';
+		let participationLabel = 'The page';
+		let fallbackNote = '';
 
-		const rootUrl =
-			PARTICIPATION_RANK[participation] < PARTICIPATION_RANK.link
-				? siteRootFallbackUrl(checkedUrl)
-				: null;
-		if (rootUrl) {
-			const root = await fetchValidated(rootUrl, { ...fetchOptions, wantsBody: () => true });
-			if (!root.ok) {
-				rootNote =
-					' The site root (' +
-					rootUrl +
+		// Where else to look, in order, when the source page carries no embed:
+		// the page the member told us holds it, then the site root. Each is one
+		// fixed hop from data already validated, never a URL read from page
+		// content, and each stops the search once it finds a passing embed.
+		/** @type {{ url: string, label: string }[]} */
+		const fallbacks = [];
+		for (const ringPageUrl of link.ringPageUrls ?? []) {
+			if (
+				isSameSiteRingPage(ringPageUrl, link.url) &&
+				ringPageUrl !== checkedUrl.href &&
+				!fallbacks.some(({ url }) => url === ringPageUrl)
+			) {
+				fallbacks.push({ url: ringPageUrl, label: 'The ring page' });
+			}
+		}
+		const rootUrl = siteRootFallbackUrl(checkedUrl);
+		if (rootUrl && !fallbacks.some(({ url }) => url === rootUrl)) {
+			fallbacks.push({ url: rootUrl, label: 'The site root' });
+		}
+
+		for (const fallback of fallbacks) {
+			if (PARTICIPATION_RANK[participation] >= PARTICIPATION_RANK.link) break;
+			const other = await fetchValidated(fallback.url, { ...fetchOptions, wantsBody: () => true });
+			if (!other.ok) {
+				fallbackNote +=
+					' ' +
+					fallback.label +
+					' (' +
+					fallback.url +
 					') was also tried but could not be read: ' +
-					root.reason.replaceAll('_', ' ') +
+					other.reason.replaceAll('_', ' ') +
 					'.';
-			} else if (siteHostname(root.checkedUrl.hostname) !== siteHostname(checkedUrl.hostname)) {
-				// A root that redirects to another site (a link-in-bio page, a
+			} else if (siteHostname(other.checkedUrl.hostname) !== siteHostname(checkedUrl.hostname)) {
+				// A page that redirects to another site (a link-in-bio page, a
 				// platform profile) is not the member's own site, so an embed
 				// there is not counted.
-				rootNote =
-					' The site root (' +
-					rootUrl +
+				fallbackNote +=
+					' ' +
+					fallback.label +
+					' (' +
+					fallback.url +
 					') redirects off-site to ' +
-					root.checkedUrl.href +
+					other.checkedUrl.href +
 					', so it was not counted.';
 			} else {
-				const atRoot = pageParticipation(
-					root.body ?? { text: '', truncated: false },
+				const found = pageParticipation(
+					other.body ?? { text: '', truncated: false },
 					memberIds,
-					root.checkedUrl.href
+					other.checkedUrl.href
 				);
-				if (PARTICIPATION_RANK[atRoot] > PARTICIPATION_RANK[participation]) {
-					participation = atRoot;
-					participationUrl = root.checkedUrl.href;
+				if (PARTICIPATION_RANK[found] > PARTICIPATION_RANK[participation]) {
+					participation = found;
+					participationUrl = other.checkedUrl.href;
+					participationLabel = fallback.label + ' (' + other.checkedUrl.href + ')';
 				} else {
-					rootNote = ' The site root (' + root.checkedUrl.href + ') was also checked.';
+					fallbackNote +=
+						' ' + fallback.label + ' (' + other.checkedUrl.href + ') was also checked.';
 				}
 			}
 		}
 
-		const foundAtRoot = participationUrl !== checkedUrl.href;
-		const where = foundAtRoot ? 'The site root (' + participationUrl + ')' : 'The page';
-		if (foundAtRoot) details = { ...details, participationUrl };
+		const where = participationLabel;
+		if (participationUrl !== checkedUrl.href) details = { ...details, participationUrl };
 
 		if (participation === 'unmatched-widget') {
 			return makeResult(link, 'warning', 'ring_widget_site_id_unmatched', startedAt, {
@@ -729,7 +789,7 @@ export async function probeLink(link, options = {}) {
 					'site-id matches no member. Expected ' +
 					memberIds.map((id) => '"' + id + '"').join(' or ') +
 					'. The embed still renders, so the member cannot see this; the fix is one attribute.' +
-					rootNote
+					fallbackNote
 			});
 		}
 		if (participation === 'indeterminate') {
@@ -741,20 +801,21 @@ export async function probeLink(link, options = {}) {
 					MAX_SOURCE_BYTES.toLocaleString('en-US') +
 					'-byte read limit before any ring embed was found. Embeds are usually in the ' +
 					'footer, which is last, so this is not evidence of absence. Confirm by hand.' +
-					rootNote
+					fallbackNote
 			});
 		}
 		if (participation === 'none') {
 			return makeResult(link, 'warning', 'ring_participation_missing', startedAt, {
 				...details,
-				detail: 'No supported ring embed was found in the page.' + rootNote
+				detail: 'No supported ring embed was found in the page.' + fallbackNote
 			});
 		}
 	}
 
 	if (checkTokens) {
 		// Always the source page: the token proves ownership of that URL, and
-		// finding the embed on the site root does not move that proof there.
+		// finding the embed on the ring page or site root does not move that
+		// proof there.
 		const missingTokens = [...link.verificationTokens].filter(
 			(token) => !hasVerificationToken(body.text, token)
 		);

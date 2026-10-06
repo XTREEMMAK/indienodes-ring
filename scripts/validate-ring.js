@@ -24,7 +24,7 @@ import { readFileSync } from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { loadMembers, RING_PATH, ROOT, serializeRing } from './ring-files.js';
-import { assertStaticallySafeUrl } from './member-health.js';
+import { assertStaticallySafeUrl, isSameSiteRingPage } from './member-health.js';
 
 /**
  * Every URL an entry carries, tagged with where it came from for a useful
@@ -40,7 +40,7 @@ import { assertStaticallySafeUrl } from './member-health.js';
 function urlsIn(entry) {
 	/** @type {{ field: string, url: string }[]} */
 	const found = [];
-	for (const field of ['source_url', 'thumb_url', 'preview_url']) {
+	for (const field of ['source_url', 'ring_page_url', 'thumb_url', 'preview_url']) {
 		if (typeof entry?.[field] === 'string') found.push({ field, url: entry[field] });
 	}
 	for (const [i, track] of (entry?.tracks ?? []).entries()) {
@@ -140,6 +140,18 @@ for (const { file, expectedId, entry } of members) {
 			failures++;
 			console.error(`Entry ${label}: ${field} is unsafe: ${error.message}`);
 		}
+	}
+
+	// A rule between two fields, which the schema cannot express. See
+	// isSameSiteRingPage for why an off-site ring page must never pass.
+	if (
+		typeof entry?.ring_page_url === 'string' &&
+		!isSameSiteRingPage(entry.ring_page_url, String(entry.source_url ?? ''))
+	) {
+		failures++;
+		console.error(
+			`Entry ${label}: ring_page_url must be an https page on the same site as source_url.`
+		);
 	}
 
 	if (entry?.id) {
