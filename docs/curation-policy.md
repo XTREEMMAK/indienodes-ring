@@ -101,6 +101,22 @@ visual project.
 
 Professional publication is not required.
 
+### Craft
+
+A made physical object, shown in photographs: weaving, textiles, ceramics,
+sculpture, leatherwork, woodwork, jewelry, or a 3D-printed piece. Show one full
+view and at least one detail shot. Materials and scale belong in the captions.
+
+**Art or craft?** If a visitor would expect to look at it, it is art. If they
+would expect to hold it, wear it, or set it on a shelf, it is craft. Borderline
+work (fiber art, painted ceramics, relief prints) is filed under whichever type
+the submitter chooses, and a borderline filing is not grounds for rejection.
+Only an obvious mismatch is.
+
+Shop links are fine. The ring links out, never takes a cut, and never ranks or
+rotates entries by sales. Photos of a finished 3D print qualify; a link to a
+model file (Printables, MakerWorld) belongs in `source_url`.
+
 ### Games
 
 A publicly playable build. The project does not need to be finished, and does not
@@ -222,7 +238,7 @@ Nothing here is automated, and no part of it is enforced by
 `npm run validate:publish`.
 
 The schema (`schema/ring.schema.json`) checks **shape**, not substance: that a
-comic has at least one page, that a game has a `thumb_url`, that media URLs are
+comic has at least one page, that a craft entry has one to five captioned pages, that a game has a `thumb_url`, that media URLs are
 `https://` and not hosted on this project's own domain. It cannot tell whether a
 `source_url` leads to a playable game, a readable story, or a page saying the
 game is coming soon. It never will.

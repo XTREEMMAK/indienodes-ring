@@ -47,7 +47,7 @@
 		},
 		"type": {
 			"type": "string",
-			"enum": ["audio", "comic", "text", "game", "art"]
+			"enum": ["audio", "comic", "text", "game", "art", "craft"]
 		},
 		"why": {
 			"type": "string",
@@ -107,8 +107,8 @@
 		},
 		"pages": {
 			"type": "array",
-			"maxItems": 3,
-			"description": "Comic only. Capped at three, matching tracks/artworks/excerpts's own \"sampler, not a full catalog host\" reasoning above -- the one media array that had been left uncapped, not a deliberate exception.",
+			"maxItems": 5,
+			"description": "Comic and craft. The outer cap of five is craft's; the allOf below holds comic to three, matching tracks/artworks/excerpts's own \"sampler, not a full catalog host\" reasoning above. A craft page is one photograph of a made object (full view, detail), and its caption is required: it carries materials and scale, and is the image's text alternative.",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
@@ -243,7 +243,7 @@
 		},
 		"thumb_url": {
 			"$ref": "#/$defs/externalMediaUrl",
-			"description": "Cover or representative image for the entry: album art, a header image, a screenshot. Required for game entries (see allOf below); optional and encouraged for every other type, where the field view uses it as the card's background instead of a flat color wash. Comics and Art fall back to their first page or artwork when this is absent."
+			"description": "Cover or representative image for the entry: album art, a header image, a screenshot. Required for game entries (see allOf below); optional and encouraged for every other type, where the field view uses it as the card's background instead of a flat color wash. Comics, Craft and Art fall back to their first page or artwork when this is absent."
 		},
 		"thumb_position": {
 			"type": "object",
@@ -304,7 +304,37 @@
 				"properties": {
 					"pages": {
 						"type": "array",
-						"minItems": 1
+						"minItems": 1,
+						"maxItems": 3
+					}
+				}
+			}
+		},
+		{
+			"if": {
+				"properties": {
+					"type": {
+						"const": "craft"
+					}
+				}
+			},
+			"then": {
+				"required": ["pages"],
+				"properties": {
+					"pages": {
+						"type": "array",
+						"minItems": 1,
+						"maxItems": 5,
+						"items": {
+							"type": "object",
+							"required": ["image_url", "caption"],
+							"properties": {
+								"caption": {
+									"type": "string",
+									"minLength": 1
+								}
+							}
+						}
 					}
 				}
 			}
