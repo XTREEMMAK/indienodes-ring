@@ -6,15 +6,15 @@
 	"tags": ["horror", "drama", "comedy", "comic", "art", "animation"],
 	"pages": [
 		{
-			"image_url": "https://frammyjammy.com/suzu-and-jack/one-panels/img/comics/pg29.png",
+			"image_url": "https://frammyjammy.com/suzu-and-jack-NEW/one-panels/img/comics/pg29.png",
 			"caption": "One Panels - Jack's Perspective"
 		},
 		{
-			"image_url": "https://frammyjammy.com/suzu-and-jack/one-panels/img/comics/pg28.png",
+			"image_url": "https://frammyjammy.com/suzu-and-jack-NEW/one-panels/img/comics/pg28.png",
 			"caption": "One Panels - Comfort"
 		},
 		{
-			"image_url": "https://frammyjammy.com/suzu-and-jack/one-panels/img/comics/pg27.png",
+			"image_url": "https://frammyjammy.com/suzu-and-jack-NEW/one-panels/img/comics/pg27.png",
 			"caption": "One Panels - Sunny Day"
 		}
 	],
@@ -23,7 +23,7 @@
 		"x": 50,
 		"y": 50
 	},
-	"source_url": "https://frammyjammy.com/suzu-and-jack/",
+	"source_url": "https://frammyjammy.com/suzu-and-jack-NEW/",
 	"verification_token": "79ca089920914acf2e0b242d93238419",
 	"joined_at": "2026-09-13T02:03:07.444Z"
 }
